@@ -4,7 +4,7 @@ Last updated: 2026-07-09
 
 ## Current status
 
-Phases 0–4 are implemented. Every phase is maintained as an individual
+Phases 0–5 are implemented. Every phase is maintained as an individual
 milestone commit.
 
 | Phase | Status | Commit |
@@ -13,8 +13,8 @@ milestone commit.
 | 1 — Tuner Toad | Complete | `335b50e` |
 | 2 — Autotune | Implemented with documented shifter fallback | `c763e00` |
 | 3 — Harmonizer | Complete; manual audio QA remains | `9edf7e3` |
-| 4 — Instruments + FX | Complete; manual audio QA remains | this commit |
-| 5 — Looper | Not started | — |
+| 4 — Instruments + FX | Complete; manual audio QA remains | `7198f5b` |
+| 5 — Looper | Complete; manual loop/audio QA remains | this commit |
 | 6 — Hands + polish | Not started | — |
 
 ## What is implemented
@@ -109,6 +109,39 @@ milestone commit.
 - Full panic behavior for bypassing voice and releasing active synth notes.
 - Note-on croak bubbles with pooled Pixi graphics and note-off pops.
 
+### Phase 5 — quantized loop station
+
+- Worklet-side loop capture protocol:
+  - `record-arm` preallocates the capture buffer outside `process()`;
+  - render blocks copy the processor's own pre-FX stereo output to mono;
+  - partial first/last blocks are handled by absolute frame overlap;
+  - `record-done` transfers the recorded `ArrayBuffer` back to the main thread.
+- Pure loop timing helpers for exact sample counts, next-boundary quantization,
+  one-bar count-in math, and latency-compensation rotation.
+- Main-thread `Looper` engine:
+  - first recording gets a one-bar metronome count-in;
+  - subsequent recordings arm for the next loop boundary;
+  - finished recordings immediately become native looping
+    `AudioBufferSourceNode` layers;
+  - every layer starts with the correct offset against the shared loop epoch;
+  - existing layers keep playing while new overdubs record;
+  - up to 8 layers are enforced.
+- Latency compensation rotates each captured loop by browser output latency,
+  worklet shifter latency, and a store-tweakable sample offset.
+- Per-layer mute, volume, clear, and local reverb-send controls with ramped
+  gain changes.
+- Loop layers route through the master bus and FX bus, so Take recording and
+  global reverb/delay affect the loop stack.
+- Panic cancels an armed/in-flight loop recording without deleting existing
+  layers.
+- Dedicated Loop dock section with BPM lockout, bar selection, click toggle,
+  Record/Cancel states, loop-position progress line, 8-layer counter, and
+  layer lanes.
+- BPM and bars are locked while layers exist and re-enabled after clearing all
+  layers.
+- Pixi firefly row: one amber firefly per layer pulses at the loop boundary;
+  muted layers dim; armed/recording shows a blinking amber slot.
+
 ## Automated verification
 
 Run:
@@ -120,8 +153,8 @@ npm.cmd run build
 
 Current result:
 
-- 5 test files passed.
-- 44 tests passed.
+- 6 test files passed.
+- 50 tests passed.
 - Strict TypeScript production build passed.
 - Production output contains a separately bundled AudioWorklet.
 - No explicit `any` under `src/`.
@@ -138,6 +171,8 @@ The tests cover:
 - ParamsBus layout uniqueness.
 - voice-to-MIDI onset/release timing, note changes, re-attacks, velocity
   mapping, and randomized note-on/note-off balance.
+- loop length, next-boundary quantization, and loop-buffer rotation for latency
+  compensation.
 
 ## How to test in Chrome
 
@@ -198,6 +233,28 @@ the microphone/AudioWorklet permission path.
    note must release; the Take recorder intentionally continues.
 9. Deny microphone permission after a fresh reload and use **Start with demo
    input instead**; the app should remain fully explorable.
+
+### Phase 5 looper test
+
+1. Select **Demo** as the input source. Keep Click enabled.
+2. In the **Loop** section, set Tempo=90 and Bars=2. Press **Record**.
+   The button should amber-pulse during the one-bar count-in, turn solid while
+   recording, then return to idle/playing as layer 1 appears and immediately
+   loops.
+3. Press **Record** mid-loop. It should arm until the next boundary while layer
+   1 keeps playing, then record layer 2 over it. Repeat to at least 3 layers.
+4. Try Effect, Instrument, and Both modes before recording new layers; each
+   layer lane should keep the snapshot label from record time.
+5. Mute/unmute layers, move Vol and Rev sliders, and clear a single layer. The
+   remaining layers should stay in time.
+6. Clear all layers. BPM and Bars controls should become editable again.
+7. Stack 8 layers; Record should disable at the cap.
+8. Press **Take** while loops play, then stop it. The downloaded `.webm` should
+   include the loop stack plus any live voice/instrument input.
+9. Press **Panic** while armed or recording. No corrupt layer should appear, and
+   previously recorded layers should keep playing.
+10. Watch the stage top row: fireflies should pulse together on loop boundaries,
+    muted layers should dim, and the armed/recording slot should blink amber.
 
 ### Telemetry verification
 
@@ -260,6 +317,10 @@ The agent cannot hear the output. These remain manual:
 - harmony musical balance and stereo width;
 - instrument preset balance, reverb/delay feel, and metronome level;
 - take playback and source-switch click checks;
+- loop capture alignment, overdub smoothness, mute/unmute click checks, and
+  whether the default latency compensation needs a manual sample offset on the
+  target machine;
+- long-run loop drift checks over 5 minutes;
 - audio glitches under five-voice load;
 - perceived formant quality.
 
@@ -267,6 +328,7 @@ The agent cannot hear the output. These remain manual:
 
 - Record the actual displayed latency in Chrome.
 - Confirm `workletP95Us ≤ 1500` with four harmony voices active.
+- Confirm `workletP95Us ≤ 1500` while worklet capture is recording a loop.
 - Confirm the stage remains near 60 fps during five-voice operation.
 
 The granular implementation is optimized with lookup windows, inactive-voice
@@ -279,6 +341,8 @@ skipping, and post-ramp reset, but the real device measurement is authoritative.
 - During the Phase 4 smoke pass the in-app browser backend was available but
   exposed no open tab, so the new control layout and audio interactions could
   not be interactively inspected by the agent.
+- Phase 5 automated math/build verification passed, but audible loop alignment
+  and drift verification still require desktop Chrome with speakers/headphones.
 - Chrome remains the authoritative manual environment for the provided test
   procedure.
 
@@ -286,7 +350,6 @@ skipping, and post-ramp reset, but the real device measurement is authoritative.
 
 - Toad, ghost, lilypads, tadpoles, ripples, and fireflies are placeholder Pixi
   graphics, not final sprite art.
-- Quantized recording/overdub looper is Phase 5 and is not implemented.
 - MediaPipe hand tracking, gesture controls, persistence, performance mode, and
   deployment polish are Phase 6 and are not implemented.
 - Safari support remains deferred by the project specification.

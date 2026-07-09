@@ -28,6 +28,10 @@ const HARMONY_VOICE_COUNT = 4;
 const TADPOLE_FADE_TAU_SECONDS = 0.12;
 const TADPOLE_WIGGLE_PX = 2;
 const BUBBLE_COUNT = 8;
+const MAX_FIREFLIES = 8;
+const FIREFLY_Y_PX = 18;
+const FIREFLY_SPACING_PX = 22;
+const FIREFLY_START_X_PX = 42;
 const TADPOLE_NOTE_PARAMS = [
   P.harmonyNote0,
   P.harmonyNote1,
@@ -52,6 +56,11 @@ interface BubbleVisual {
 export interface PitchSceneDeps {
   readBus: (index: number) => number;
   getKey: () => KeyConfig;
+  getLooper: () => {
+    progress: number;
+    state: string;
+    layers: Array<{ id: number; muted: boolean }>;
+  };
 }
 
 export interface PitchScene {
@@ -85,6 +94,10 @@ export function createPitchScene(
     placeholderSprites.tadpole(),
     placeholderSprites.tadpole(),
   ] as const;
+  const fireflies = Array.from({ length: MAX_FIREFLIES }, () =>
+    placeholderSprites.firefly(),
+  );
+  const armedFirefly = placeholderSprites.firefly();
   const tadpoleAlpha = new Float64Array(HARMONY_VOICE_COUNT);
   const tadpoleY = new Float64Array(HARMONY_VOICE_COUNT);
   const traceY = new Float32Array(TRACE_POINTS);
@@ -107,6 +120,12 @@ export function createPitchScene(
     tadpole.visible = false;
     world.addChild(tadpole);
   }
+  for (const firefly of fireflies) {
+    firefly.visible = false;
+    world.addChild(firefly);
+  }
+  armedFirefly.visible = false;
+  world.addChild(armedFirefly);
   world.addChild(ghostToad);
   world.addChild(toad);
   app.stage.addChild(world);
@@ -134,6 +153,7 @@ export function createPitchScene(
     const stableNote = deps.readBus(P.stableNote);
     const hardRetune = deps.readBus(P.retuneMs) <= 1;
     const voiced = detectedFreq > 0 && smoothedMidi > 0;
+    const looper = deps.getLooper();
 
     if (voiced) {
       centerHistory[centerHistoryWriteIndex] = smoothedMidi;
@@ -275,6 +295,13 @@ export function createPitchScene(
       );
     }
 
+    updateFireflies(
+      fireflies,
+      armedFirefly,
+      looper,
+      app.ticker.lastTime,
+    );
+
     traceY[traceWriteIndex] = voiced ? yForMidi(smoothedMidi) : toadY;
     traceVoiced[traceWriteIndex] = voiced ? 1 : 0;
     traceWriteIndex = (traceWriteIndex + 1) % TRACE_POINTS;
@@ -401,4 +428,46 @@ function drawTrace(
     }
   }
   trace.stroke({ width: 2, color: 0x8fa6a3, alpha: 0.65 });
+}
+
+function updateFireflies(
+  fireflies: Container[],
+  armedFirefly: Container,
+  looper: {
+    progress: number;
+    state: string;
+    layers: Array<{ id: number; muted: boolean }>;
+  },
+  timeMs: number,
+): void {
+  const boundaryDistance = Math.min(looper.progress, 1 - looper.progress);
+  const pulse = Math.exp(-boundaryDistance * 70);
+  for (let index = 0; index < fireflies.length; index += 1) {
+    const firefly = fireflies[index]!;
+    const layer = looper.layers[index];
+    firefly.visible = layer !== undefined;
+    if (!layer) continue;
+    firefly.position.set(
+      FIREFLY_START_X_PX + index * FIREFLY_SPACING_PX,
+      FIREFLY_Y_PX,
+    );
+    firefly.alpha = (layer.muted ? 0.25 : 0.72) + (layer.muted ? 0 : pulse * 0.28);
+    const scale = 1 + pulse * (layer.muted ? 0.25 : 1.15);
+    firefly.scale.set(scale);
+  }
+
+  const armed = looper.state === 'armed' || looper.state === 'recording';
+  armedFirefly.visible = armed;
+  if (armed) {
+    const index = Math.min(looper.layers.length, fireflies.length - 1);
+    const blink = looper.state === 'recording'
+      ? 1
+      : 0.45 + Math.sin(timeMs * 0.012) * 0.35;
+    armedFirefly.position.set(
+      FIREFLY_START_X_PX + index * FIREFLY_SPACING_PX,
+      FIREFLY_Y_PX,
+    );
+    armedFirefly.alpha = Math.max(0.2, blink);
+    armedFirefly.scale.set(looper.state === 'recording' ? 1.8 : 1.25);
+  }
 }

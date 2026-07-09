@@ -1,5 +1,6 @@
 import { useStore } from '../state/store';
 import { ControlsPanel } from './ControlsPanel';
+import { LooperPanel } from './LooperPanel';
 import { StartGate } from './StartGate';
 import { PitchStage } from './pixi/PitchStage';
 import styles from './Console.module.css';
@@ -26,6 +27,7 @@ export function Console() {
 
         <div className={styles.dock} aria-label="Controls dock">
           <ControlsPanel />
+          <LooperPanel />
         </div>
       </main>
     </>

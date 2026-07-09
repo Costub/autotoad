@@ -51,12 +51,46 @@ interface ParamsMessage {
   data: Float64Array;
 }
 
+interface RecordArmMessage {
+  type: 'record-arm';
+  startFrame: number;
+  lengthSamples: number;
+  recordingId: number;
+}
+
+interface RecordCancelMessage {
+  type: 'record-cancel';
+}
+
+interface RecordingState {
+  recordingId: number;
+  startFrame: number;
+  lengthSamples: number;
+  buffer: Float32Array;
+  actualStartFrame: number;
+}
+
 function isParamsMessage(value: unknown): value is ParamsMessage {
   if (typeof value !== 'object' || value === null) {
     return false;
   }
   const message = value as Partial<ParamsMessage>;
   return message.type === 'params' && message.data instanceof Float64Array;
+}
+
+function isRecordArmMessage(value: unknown): value is RecordArmMessage {
+  if (typeof value !== 'object' || value === null) return false;
+  const message = value as Partial<RecordArmMessage>;
+  return message.type === 'record-arm' &&
+    typeof message.startFrame === 'number' &&
+    typeof message.lengthSamples === 'number' &&
+    typeof message.recordingId === 'number';
+}
+
+function isRecordCancelMessage(value: unknown): value is RecordCancelMessage {
+  return typeof value === 'object' &&
+    value !== null &&
+    (value as Partial<RecordCancelMessage>).type === 'record-cancel';
 }
 
 function readSharedBuffer(options: AudioWorkletNodeOptions): SharedArrayBuffer | null {
@@ -168,10 +202,14 @@ class ToadProcessor extends AudioWorkletProcessor {
   private unvoicedBlocks = 0;
   private shifterResetForSilence = false;
   private perfIndex = 0;
+  private recording: RecordingState | null = null;
+  private fallbackFrame = 0;
 
   constructor(options: AudioWorkletNodeOptions) {
     super();
     this.bus = new WorkletBusView(this.port, readSharedBuffer(options));
+    this.port.addEventListener('message', this.handleMessage);
+    this.port.start();
     this.port.postMessage({ type: 'ready' });
     void this.initializeShifters();
   }
@@ -181,6 +219,8 @@ class ToadProcessor extends AudioWorkletProcessor {
     const startedAt = canMeasure ? performance.now() : 0;
     const input = inputs[0]?.[0];
     const output = outputs[0];
+    const blockStart = this.currentFrame();
+    const blockSize = output?.[0]?.length ?? input?.length ?? DEFAULT_BLOCK_SAMPLES;
 
     if (input && input.length > 0) {
       const { rms } = this.envelope.processBlock(input);
@@ -213,11 +253,71 @@ class ToadProcessor extends AudioWorkletProcessor {
       silenceOutput(output);
     }
 
+    this.captureOutputIfNeeded(output, blockStart, blockSize);
+    this.fallbackFrame += blockSize;
     if (canMeasure) {
       this.recordPerformance(performance.now() - startedAt);
     }
     this.bus.flushTelemetryIfNeeded();
     return true;
+  }
+
+  private readonly handleMessage = (event: MessageEvent<unknown>): void => {
+    if (isRecordArmMessage(event.data)) {
+      const lengthSamples = Math.max(1, Math.round(event.data.lengthSamples));
+      this.recording = {
+        recordingId: event.data.recordingId,
+        startFrame: Math.round(event.data.startFrame),
+        lengthSamples,
+        buffer: new Float32Array(lengthSamples),
+        actualStartFrame: Math.round(event.data.startFrame),
+      };
+    } else if (isRecordCancelMessage(event.data)) {
+      this.recording = null;
+    }
+  };
+
+  private currentFrame(): number {
+    const audioGlobal = globalThis as unknown as { currentFrame?: number };
+    return typeof audioGlobal.currentFrame === 'number'
+      ? audioGlobal.currentFrame
+      : this.fallbackFrame;
+  }
+
+  private captureOutputIfNeeded(
+    output: Float32Array[] | undefined,
+    blockStart: number,
+    blockSize: number,
+  ): void {
+    const recording = this.recording;
+    if (!recording || !output || blockSize <= 0) return;
+    const recordEnd = recording.startFrame + recording.lengthSamples;
+    const blockEnd = blockStart + blockSize;
+    const overlapStart = Math.max(blockStart, recording.startFrame);
+    const overlapEnd = Math.min(blockEnd, recordEnd);
+    if (overlapStart >= overlapEnd) return;
+
+    const left = output[0];
+    const right = output[1];
+    for (let frame = overlapStart; frame < overlapEnd; frame += 1) {
+      const blockIndex = frame - blockStart;
+      const writeIndex = frame - recording.startFrame;
+      const leftSample = left?.[blockIndex] ?? 0;
+      const rightSample = right?.[blockIndex] ?? leftSample;
+      recording.buffer[writeIndex] = (leftSample + rightSample) * 0.5;
+    }
+
+    if (overlapEnd >= recordEnd) {
+      const transfer = recording.buffer.buffer;
+      this.port.postMessage({
+        type: 'record-done',
+        recordingId: recording.recordingId,
+        buffer: transfer,
+        channels: 1,
+        actualStartFrame: recording.actualStartFrame,
+      }, [transfer]);
+      this.recording = null;
+    }
   }
 
   private async initializeShifters(): Promise<void> {

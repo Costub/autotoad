@@ -20,7 +20,7 @@ This directory contains the complete phase-wise implementation plan for AUTOTOAD
 | 1 | [phase-1-tuner-toad.md](phase-1-tuner-toad.md) | "Tuner toad": mic → worklet pitch detection with full smoothing pipeline → PixiJS toad tracking your pitch against a key/scale. No audio output yet |
 | 2 | [phase-2-autotune.md](phase-2-autotune.md) | Real-time autotune: formant-preserving pitch correction with adjustable retune speed, controls panel, latency display |
 | 3 | [phase-3-harmonizer.md](phase-3-harmonizer.md) | Up to 4 diatonic harmony voices with presets (Duet/Triad/Choir/Octaves), stereo spread, tadpole sprites |
-| 4 | [phase-4-instruments-fx.md](phase-4-instruments-fx.md) | Voice-to-MIDI instrument mode (4 Tone.js presets) + global FX bus (reverb + tempo-synced delay) |
+| 4 | [phase-4-instruments-fx.md](phase-4-instruments-fx.md) | Test harness (demo/file input, output take recorder, BPM + metronome, level meter) + voice-to-MIDI instrument mode (4 Tone.js presets) + global FX bus (reverb + tempo-synced delay) |
 | 5 | [phase-5-looper.md](phase-5-looper.md) | Quantized looper: sample-accurate record/overdub of up to 8 layers with latency compensation |
 | 6 | [phase-6-hands-polish.md](phase-6-hands-polish.md) | MediaPipe hand-gesture control (grab-faders, slides, XY pad, flicks), gesture HUD, performance mode, settings persistence, Vercel deploy, final feel audit |
 

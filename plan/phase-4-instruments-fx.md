@@ -2,8 +2,9 @@
 
 ## Goal
 
-Two big additions, both on the Tone.js side (main thread):
+Three additions:
 
+0. **Test harness (build this FIRST — section 4.0)**: a switchable demo input (generated out-of-tune melody played through the whole DSP chain instead of the mic), a file input (load any local audio file as the voice source), an input level meter, a "take recorder" that records the master output to a downloadable file, and a BPM control + metronome (moved up from Phase 5). This exists so every later feature — and the already-built autotune/harmonizer — can be tested deterministically without a good mic performance.
 1. **Voice-to-MIDI instrument mode**: a note-segmentation state machine converts the tracker stream into note events driving one of four Tone.js instrument presets (chiptune / fmBass / pluck / choirPad). Modes: Effect ↔ Instrument ↔ Both. Optional chord-follow (instrument also receives harmony notes). Legato toggle.
 2. **Global FX bus**: lush convolution reverb + tempo-synced feedback delay as a shared send bus for voice and instruments (looper joins in Phase 5), with UI controls and single-choke-point ramped parameter setting.
 
@@ -16,15 +17,107 @@ Phase 3 complete.
 ## Files to create / modify
 
 ```
+create: src/audio/demoInput.ts       (generated demo melody + file loading)
+create: src/audio/takeRecorder.ts    (master-output recorder)
+create: src/audio/metronome.ts       (BPM click, reused by the Phase 5 looper)
 create: src/audio/midi/voiceToMidi.ts
 create: src/audio/instruments/presets.ts
 create: src/audio/fx/fxBus.ts
 create: tests/voiceToMidi.test.ts
-modify: src/audio/engine.ts          (Tone context, master chain, note-event pump, mode switching)
+modify: src/audio/engine.ts          (Tone context, master chain, input-source switching, note-event pump, mode switching)
+modify: src/ui/StartGate.tsx         (offer demo mode when the mic is denied)
 modify: src/audio/worklets/toad-processor.ts  (only if telemetry gaps found; ideally none)
-modify: src/ui/ControlsPanel.tsx     (Instrument group + FX group)
+modify: src/ui/ControlsPanel.tsx     (Input/Tempo strip + Instrument group + FX group)
 modify: src/ui/pixi/pitchScene.ts    (croak bubbles on noteOn)
+modify: src/state/store.ts           (inputSource, isRecordingTake — see 4.0)
 ```
+
+---
+
+## 4.0 Test harness (implement this section FIRST, before 4.1)
+
+Everything here is plumbing around the existing engine; none of it touches the worklet.
+
+### 4.0.1 Input source switching
+
+Add to the store: `inputSource: 'mic' | 'demo' | 'file'` (default `'mic'`, not persisted later). The engine keeps ONE connection into the worklet at a time:
+
+```ts
+// engine.ts
+setInputSource(src: 'mic' | 'demo' | 'file', fileBuffer?: AudioBuffer): void {
+  // 1. Disconnect the current source node from this.node (keep the mic MediaStream
+  //    alive — don't stop tracks; switching back must be instant).
+  // 2. 'mic'  -> reconnect the existing MediaStreamAudioSourceNode.
+  //    'demo' -> create AudioBufferSourceNode from getDemoBuffer(ctx), loop = true,
+  //              start(), connect to worklet. Recreate on every switch (sources are one-shot).
+  //    'file' -> same but with the decoded user file buffer, loop = true.
+  // 3. Old demo/file source nodes: stop() and drop.
+}
+```
+
+UI: a small segmented control at the left end of the dock: **Mic / Demo / File…** — "File…" opens `<input type="file" accept="audio/*">`; decode with `ctx.decodeAudioData(await file.arrayBuffer())`, downmix to mono if needed (average channels into a fresh mono AudioBuffer), then `setInputSource('file', buffer)`.
+
+### 4.0.2 `src/audio/demoInput.ts` — generated demo melody
+
+A deterministic, deliberately out-of-tune "sung" melody rendered ONCE with `OfflineAudioContext` and cached. This is the canonical test signal for autotune and harmony — no assets needed:
+
+```ts
+// 8 notes, 500 ms each, ~4.3 s total, rendered at ctx.sampleRate:
+const MELODY_MIDI  = [60, 62, 64, 65, 67, 65, 64, 62];       // C D E F G F E D
+const DETUNE_CENTS = [40, -35, 45, -40, 30, -45, 35, -30];   // deliberately off-key
+// Per note: sawtooth OscillatorNode at midiToFreq(midi + cents/100),
+//   vibrato: LFO (sine, 5.5 Hz) -> GainNode(scale: ±0.4% of freq) -> osc.frequency
+//     (±0.4% ≈ ±7 cents — keeps clarity high while sounding voice-like),
+//   tone: lowpass BiquadFilter at 1200 Hz (rounds the saw toward a hum),
+//   envelope: gain 0 -> 0.5 over 30 ms, hold, -> 0 over 80 ms; 30 ms gap between notes.
+export async function getDemoBuffer(ctx: AudioContext): Promise<AudioBuffer>; // cached singleton
+```
+
+Why sawtooth: strong harmonics → the MPM detector locks with clarity ≈ 0.95+, so the whole pipeline (gate → correction → harmony) engages exactly as it does for a clean sung note. With Key=C / Major, autotune must pull every note to pitch (the detunes vanish); with Triad, telemetry must show the stacked thirds.
+
+### 4.0.3 `src/audio/takeRecorder.ts` — record the output
+
+Records the **master output** (everything you hear) to a downloadable file. MediaRecorder is fine HERE (it's a bounce, not the sample-accurate looper — that rule from Phase 5 is unchanged):
+
+```ts
+export class TakeRecorder {
+  constructor(ctx: AudioContext, masterGain: GainNode) {
+    // dest = ctx.createMediaStreamDestination(); masterGain.connect(dest);
+    // recorder = new MediaRecorder(dest.stream, { mimeType: 'audio/webm;codecs=opus' })
+    //   (feature-detect with MediaRecorder.isTypeSupported; fall back to default mime).
+  }
+  start(): void;                     // collect chunks via ondataavailable
+  async stop(): Promise<void>;       // onstop -> Blob -> triggger download:
+  // a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  // a.download = `autotoad-take-${new Date().toISOString().replace(/[:.]/g,'-')}.webm`; a.click();
+  // then URL.revokeObjectURL after a tick.
+}
+```
+
+UI: a **● Take** button in the dock (right end): idle → recording (amber dot + elapsed seconds, the ONLY other permitted amber use besides looper) → click again stops and downloads. Mirror `isRecordingTake` in the store. Panic does NOT stop a take (it records the panic silence — that's fine and simplest).
+
+### 4.0.4 `src/audio/metronome.ts` — BPM + click (moved up from Phase 5)
+
+```ts
+export class Metronome {
+  // Tone.getTransport().bpm.value follows store.bpm (ramp: bpm.rampTo(v, 0.1)).
+  // Click: short Tone.Synth blip scheduled with transport.scheduleRepeat('4n', ...):
+  //   beat 1 of each bar = 2000 Hz, other beats = 1000 Hz, duration '32n'.
+  // Output through a Tone.Gain gated (RAMPED) by store.metronomeOn.
+  // start(): starts the Transport if not running; stop(): stops click scheduling only.
+}
+```
+
+UI: a **Tempo** mini-group in the dock: BPM stepper (60–180, default 90) + metronome toggle (click icon). The Transport also drives the tempo-synced delay (4.5), so BPM changes audibly retime the delay — that's correct and desirable. Phase 5 will reuse this exact metronome and add the count-in + boundary logic; do not duplicate it there.
+
+### 4.0.5 Input level meter + mic-denied demo mode
+
+- **Level meter**: a 4 px-wide vertical bar next to the input switch, height driven by `P.rmsLevel` read in the existing rAF loop (direct DOM style update, not React state). Green normally; turns muted-gray when the tracker is unvoiced. This single element answers "is any signal even reaching the engine?" — the most common "it doesn't work" cause.
+- **StartGate change**: if the mic is denied, the error panel now ALSO shows a second button: **"Start with demo input instead"** → `engine.start({ skipMic: true })` (engine skips getUserMedia, sets `inputSource: 'demo'`, connects the demo buffer). The app must be fully explorable without any microphone.
+
+### 4.0.6 Manual test (do this before moving to 4.1)
+
+Switch to Demo input, Key=C, Scale=Major, Mix=100% wet, Amount=100%, Retune=0: the out-of-tune melody comes out snapped to C major (compare with Bypass on — the detuning is obvious). Enable Triad: harmony thirds stack. Start a Take, let it run one loop, stop: a `.webm` downloads and plays back the processed audio.
 
 ---
 
@@ -154,7 +247,7 @@ Implementation requirements:
 - **Reverb**: `Tone.Reverb({ decay: 2.2, preDelay: 0.02 })`, `await reverb.generate()` during StartGate preload if possible (or fire-and-forget at creation). Input chain: `Tone.Filter(150, 'highpass')` → reverb (low-cut keeps wet un-muddy). `reverb.wet = 1` (it's a send effect — 100% wet on the bus).
   - **Decay changes**: `Tone.Reverb` regenerates its IR async on `decay` set. To make sweeps click-free: keep **two** Reverb instances (A/B); on decay change, set decay on the idle one, `await generate()`, then crossfade A→B over 80 ms with two ramped gains, and swap roles. Debounce decay changes to at most one regeneration per 150 ms (a slider drag would otherwise queue dozens).
 - **Delay**: `Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.35, maxDelay: 2 })`, wet 1. Feedback **clamped to 0.75** in `setParam` regardless of input. Inside the feedback path add a high-cut: simplest reliable structure in Tone is `delay` → `Tone.Filter(4000, 'lowpass')` on the OUTPUT plus keeping native feedback ≤0.75; if you build a manual feedback loop (Delay + Gain + Filter) to get the filter truly in-loop, that's better — do it if straightforward: `input → delayNode → filter(4k lowpass) → feedbackGain → delayNode`, output tapped after filter.
-  - `delayTime` is one of `['8n','8n.','4n','2n']` (store as the string; `setParam` receives an index 0–3). Tone converts notation using the Transport BPM — set `Tone.getTransport().bpm.value = store.bpm` now (Transport fully used in Phase 5). Ramp delay-time changes (`delay.delayTime.rampTo(newValue, 0.05)`) to avoid pitch-chirp artifacts, and accept the brief tape-style pitch slew (that's the good-sounding behavior).
+  - `delayTime` is one of `['8n','8n.','4n','2n']` (store as the string; `setParam` receives an index 0–3). Tone converts notation using the Transport BPM — already wired to `store.bpm` by the metronome (4.0.4). Ramp delay-time changes (`delay.delayTime.rampTo(newValue, 0.05)`) to avoid pitch-chirp artifacts, and accept the brief tape-style pitch slew (that's the good-sounding behavior).
 - **Sends**: `connectSource(node)` creates two `Tone.Gain(0)` nodes from that node into reverb-input and delay-input. Returns them so the engine can map store values → per-source send levels.
 - **Both FX outputs** (`fxReturn`) connect to `masterGain`.
 - **`setParam` ramps everything**: `param.rampTo(value, 0.05)` — never `.value =` (except construction). FX params do NOT go through the ParamsBus (they live on the Tone side); the Zustand store is their source of truth and `setParam` is the only write path from both UI and (later) gestures.
@@ -186,7 +279,15 @@ Synthetic frame sequences at 16 ms steps:
 
 ## Acceptance checklist
 
-- [ ] Humming a melody with "da" articulation retriggers cleanly; sustained slides in legato mode glide.
+Test harness (4.0):
+- [ ] Demo input plays the out-of-tune melody through the full chain; with Retune=0 in C major it comes out in tune (obvious against Bypass), and Triad stacks correct thirds (telemetry check).
+- [ ] File input: loading a local song/vocal file processes it live; switching Mic ↔ Demo ↔ File is instant and click-free.
+- [ ] Take recorder: start → amber indicator + elapsed time → stop downloads a playable `.webm` of exactly what was heard.
+- [ ] BPM control + metronome click work; changing BPM audibly retimes the synced delay.
+- [ ] Input level meter moves with signal on all three input sources; denying the mic at StartGate offers and successfully starts demo mode.
+
+Instruments + FX:
+- [ ] Humming a melody with "da" articulation retriggers cleanly; sustained slides in legato mode glide (also verifiable with the demo input: its 30 ms note gaps must produce 8 distinct noteOns per pass).
 - [ ] "ta-ta-ta" at 120 BPM eighth notes → 8 distinct notes in 2 seconds (count console-logged noteOns while a metronome app plays).
 - [ ] No stuck notes after 5 minutes of mixed use — switch modes/presets mid-note, panic mid-note; synth always goes silent.
 - [ ] Both mode: corrected voice + instrument sound together.

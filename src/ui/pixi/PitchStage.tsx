@@ -43,6 +43,7 @@ export function PitchStage() {
       scene = createPitchScene(app, {
         readBus: (index) => engine.bus.get(index as ParamIndex),
         getKey: () => useStore.getState().key,
+        getLooper: () => engine.getLoopVisualState(),
       });
     };
 

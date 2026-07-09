@@ -7,6 +7,15 @@ import type {
   KeyConfig,
   InputSourceName,
 } from '../types';
+import type { LooperState } from '../audio/looper/looper';
+
+export interface LooperLayerSummary {
+  id: number;
+  snapshot: string;
+  muted: boolean;
+  gain: number;
+  reverbSend: number;
+}
 
 export interface AppState {
   started: boolean;
@@ -41,6 +50,11 @@ export interface AppState {
   bpm: number;
   bars: number;
   metronomeOn: boolean;
+  looperState: LooperState;
+  looperLayers: LooperLayerSummary[];
+  looperEpochSamples: number;
+  loopLengthSamples: number;
+  looperLatencyOffsetSamples: number;
 
   latencyMs: number;
 
@@ -75,6 +89,11 @@ export const useStore = create<AppState>((set) => ({
   bpm: 90,
   bars: 2,
   metronomeOn: true,
+  looperState: 'idle',
+  looperLayers: [],
+  looperEpochSamples: 0,
+  loopLengthSamples: 0,
+  looperLatencyOffsetSamples: 0,
   latencyMs: 0,
   set: (partial) => set(partial),
 }));

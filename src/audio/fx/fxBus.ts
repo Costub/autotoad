@@ -7,8 +7,19 @@ export type FxParam =
   | 'delayTime'
   | 'delayFeedback';
 
+export interface SourceFxSends {
+  reverb: Tone.Gain;
+  delay: Tone.Gain;
+  dispose(): void;
+}
+
+export interface SourceFxOptions {
+  reverbScale?: number;
+  delayScale?: number;
+}
+
 export interface FxBus {
-  connectSource(node: AudioNode | Tone.ToneAudioNode): void;
+  connectSource(node: AudioNode | Tone.ToneAudioNode, options?: SourceFxOptions): SourceFxSends;
   setParam(name: FxParam, value: number): void;
   dispose(): void;
 }
@@ -29,7 +40,12 @@ export function createFxBus(masterGain: AudioNode): FxBus {
   const delayInput = new Tone.Gain();
   const delay = new Tone.FeedbackDelay({ delayTime: '8n.', feedback: 0.35, maxDelay: 2, wet: 1 });
   const lowpass = new Tone.Filter(4000, 'lowpass');
-  const sourceSends: Array<{ reverb: Tone.Gain; delay: Tone.Gain }> = [];
+  const sourceSends: Array<{
+    localReverb: Tone.Gain;
+    globalReverb: Tone.Gain;
+    localDelay: Tone.Gain;
+    globalDelay: Tone.Gain;
+  }> = [];
   let reverbLevel = 0.18;
   let delayLevel = 0;
   let activeReverb = 0;
@@ -60,22 +76,39 @@ export function createFxBus(masterGain: AudioNode): FxBus {
   };
 
   return {
-    connectSource(node) {
-      const reverbSend = new Tone.Gain(reverbLevel);
-      const delaySend = new Tone.Gain(delayLevel);
-      Tone.connect(node, reverbSend);
-      Tone.connect(node, delaySend);
-      reverbSend.connect(reverbInput);
-      delaySend.connect(delayInput);
-      sourceSends.push({ reverb: reverbSend, delay: delaySend });
+    connectSource(node, options = {}) {
+      const localReverb = new Tone.Gain(options.reverbScale ?? 1);
+      const globalReverb = new Tone.Gain(reverbLevel);
+      const localDelay = new Tone.Gain(options.delayScale ?? 1);
+      const globalDelay = new Tone.Gain(delayLevel);
+      Tone.connect(node, localReverb);
+      Tone.connect(node, localDelay);
+      localReverb.connect(globalReverb);
+      localDelay.connect(globalDelay);
+      globalReverb.connect(reverbInput);
+      globalDelay.connect(delayInput);
+      const entry = { localReverb, globalReverb, localDelay, globalDelay };
+      sourceSends.push(entry);
+      return {
+        reverb: localReverb,
+        delay: localDelay,
+        dispose() {
+          const index = sourceSends.indexOf(entry);
+          if (index >= 0) sourceSends.splice(index, 1);
+          localReverb.dispose();
+          globalReverb.dispose();
+          localDelay.dispose();
+          globalDelay.dispose();
+        },
+      };
     },
     setParam(name, value) {
       if (name === 'reverbSend') {
         reverbLevel = value;
-        sourceSends.forEach((send) => send.reverb.gain.rampTo(value, 0.05));
+        sourceSends.forEach((send) => send.globalReverb.gain.rampTo(value, 0.05));
       } else if (name === 'delaySend') {
         delayLevel = value;
-        sourceSends.forEach((send) => send.delay.gain.rampTo(value, 0.05));
+        sourceSends.forEach((send) => send.globalDelay.gain.rampTo(value, 0.05));
       } else if (name === 'delayFeedback') {
         delay.feedback.rampTo(Math.min(0.75, Math.max(0, value)), 0.05);
       } else if (name === 'delayTime') {
@@ -87,8 +120,10 @@ export function createFxBus(masterGain: AudioNode): FxBus {
     dispose() {
       if (decayTimer !== null) globalThis.clearTimeout(decayTimer);
       sourceSends.forEach((send) => {
-        send.reverb.dispose();
-        send.delay.dispose();
+        send.localReverb.dispose();
+        send.globalReverb.dispose();
+        send.localDelay.dispose();
+        send.globalDelay.dispose();
       });
       reverbInput.dispose();
       highpass.dispose();

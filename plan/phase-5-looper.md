@@ -2,10 +2,13 @@
 
 ## Goal
 
-A quantized, sample-accurate loop station:
+A quantized, sample-accurate loop station.
 
-- Tempo (default 90 BPM) + bars (default 2, 4/4) → exact loop length in samples.
-- Metronome click + 1-bar count-in before the first recording.
+**The core user experience, stated plainly (this is the contract):** you press Record, sing/beatbox for the loop length, and the moment recording ends the layer **immediately starts looping and keeps playing on its own**. You then press Record again and perform a new part **over** the still-playing layers; that becomes layer 2, also looping. Repeat up to 8 stacked layers, each independently mutable/removable, all staying in time with each other indefinitely. Recording never interrupts playback of existing layers.
+
+Scope:
+
+- Tempo (default 90 BPM) + bars (default 2, 4/4) → exact loop length in samples. BPM control and the metronome already exist from Phase 4.0.4 — reuse that metronome; this phase adds the count-in and loop-boundary logic on top of it.
 - **Capture happens inside `ToadProcessor`** (the worklet copies its own output blocks into a preallocated buffer) — never MediaRecorder.
 - Record arm/disarm quantized to loop boundaries; armed state visible in UI.
 - Each finished layer plays back via `AudioBufferSourceNode` looping sample-accurately, all layers phase-locked to a shared `loopEpoch`.
@@ -111,7 +114,7 @@ Behavior details:
   3. Create source: `loop = true`, `loopStart = 0`, `loopEnd = loopLen / sampleRate`. Start **phase-aligned**: `const pos = ((ctx.currentTime + 0.05) * sr - epochFrames) % loopLen; source.start(ctx.currentTime + 0.05, pos / sr)`. All layers started this way stay locked forever (they share the context clock; buffer loops don't drift).
   4. Wire: source → layer.gain → masterGain; also `fxBus.connectSource(layer.gain)` reverb send only.
   5. Push to `layers`, mirror a UI-safe summary into the store (id, snapshot, muted, gain — NOT the AudioBuffer).
-- **Metronome**: a `Tone.Synth` (short blip, 2 kHz beat-1 accent / 1 kHz others) scheduled with `Tone.getTransport().scheduleRepeat('4n', ...)`; `metronomeOn` gates its output gain (ramped). Set `Tone.getTransport().bpm.value = store.bpm` before starting.
+- **Metronome**: reuse `src/audio/metronome.ts` from Phase 4.0.4 (do NOT create a second click). This phase only adds: starting it automatically when arming the first record, the count-in accent behavior, and (optionally) auto-muting the click once at least one layer is playing unless `metronomeOn` is explicitly on.
 - **Overdub** = pressing record again = new layer (no destructive merge). At 8 layers, record button disabled.
 - **Panic** (extend Phase 4 handler): `record-cancel`, disarm, keep layers playing (bypass only kills the live voice).
 
@@ -142,7 +145,9 @@ Pure timing math only (no audio in tests):
 
 ## Acceptance checklist
 
+- [ ] **The core loop-station flow works end to end**: record layer 1 → it starts looping by itself the instant recording ends and keeps playing; record layer 2 over it while it plays (existing layers never stop or stutter during recording); stack at least 3 layers this way. Also verifiable hands-free with the Demo/File input from Phase 4.0 as the performance source.
 - [ ] Record a 2-bar beatbox layer, then a hummed fmBass line (instrument mode), then an autotuned lead with Choir: **all three loop locked, no audible drift over 5 minutes** (leave it running).
+- [ ] A Take recording (Phase 4.0.3) made while loops play captures the full loop stack + live voice — this is how you export a finished jam.
 - [ ] Alignment: with metronome on, record a single sharp click exactly on a beat; on playback it lands within ±10 ms of the metronome click (listen for flamming; if off, tune the latency-compensation constant and note the final value).
 - [ ] Pressing record mid-loop arms (amber pulse) and starts exactly at the next boundary; count-in of 1 bar occurs before the very first recording.
 - [ ] Mute/unmute is click-free and stays phase-locked (unmuting a layer after 30 s is still in time).

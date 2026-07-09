@@ -206,8 +206,6 @@ export function ControlsPanel() {
   const delaySend = useStore((state) => state.delaySend);
   const delayTime = useStore((state) => state.delayTime);
   const delayFeedback = useStore((state) => state.delayFeedback);
-  const bpm = useStore((state) => state.bpm);
-  const metronomeOn = useStore((state) => state.metronomeOn);
   const set = useStore((state) => state.set);
   const fileRef = useRef<HTMLInputElement>(null);
   const [takeSeconds, setTakeSeconds] = useState(0);
@@ -263,11 +261,6 @@ export function ControlsPanel() {
               if (file) void engine.loadFile(file);
             }}
           />
-          <span className={styles.inlineLabel}>Tempo</span>
-          <button className={styles.stepButton} type="button" onClick={() => set({ bpm: Math.max(60, bpm - 1) })}>−</button>
-          <span className={styles.bpm}>{bpm} BPM</span>
-          <button className={styles.stepButton} type="button" onClick={() => set({ bpm: Math.min(180, bpm + 1) })}>+</button>
-          <button className={`${styles.toggle} ${metronomeOn ? styles.segmentActive : ''}`} type="button" onClick={() => set({ metronomeOn: !metronomeOn })}>Click</button>
           <button className={`${styles.take} ${isRecordingTake ? styles.takeActive : ''}`} type="button" onClick={() => engine.toggleTake()}>
             ● Take{isRecordingTake ? ` ${takeSeconds}s` : ''}
           </button>

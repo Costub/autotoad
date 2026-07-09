@@ -4,6 +4,7 @@ import { createParamsBus, P, type ParamsBus } from './paramsBus';
 import { getDemoBuffer } from './demoInput';
 import { createFxBus, type FxBus } from './fx/fxBus';
 import { createInstrument, type InstrumentInstance } from './instruments/presets';
+import { Looper } from './looper/looper';
 import { Metronome } from './metronome';
 import { VoiceToMidi, type V2MEvent } from './midi/voiceToMidi';
 import { TakeRecorder } from './takeRecorder';
@@ -45,6 +46,7 @@ export class AudioEngine {
   private fxBus: FxBus | null = null;
   private instrument: InstrumentInstance | null = null;
   private metronome: Metronome | null = null;
+  private looper: Looper | null = null;
   private takeRecorder: TakeRecorder | null = null;
   private v2m = new VoiceToMidi();
   private unsubscribeStore: (() => void) | null = null;
@@ -118,6 +120,7 @@ export class AudioEngine {
       this.fxBus.connectSource(this.instrument.out);
       this.metronome = new Metronome(this.masterGain);
       this.metronome.start();
+      this.looper = new Looper(rawCtx, this.node, this.masterGain, this.fxBus, shifterLatencySamples);
       this.takeRecorder = new TakeRecorder(rawCtx, this.masterGain);
 
       this.lastState = null;
@@ -199,7 +202,49 @@ export class AudioEngine {
     }
   }
 
+  toggleLoopRecord(): void {
+    const looperState = useStore.getState().looperState;
+    if (looperState === 'armed' || looperState === 'recording') {
+      this.looper?.disarm();
+    } else {
+      this.looper?.armRecord();
+    }
+  }
+
+  clearLoopLayer(id: number): void {
+    this.looper?.clearLayer(id);
+  }
+
+  setLoopLayerGain(id: number, value: number): void {
+    this.looper?.setLayerGain(id, value);
+  }
+
+  setLoopLayerReverb(id: number, value: number): void {
+    this.looper?.setLayerReverb(id, value);
+  }
+
+  toggleLoopLayerMute(id: number): void {
+    this.looper?.toggleMute(id);
+  }
+
+  clearAllLoops(): void {
+    this.looper?.clearAll();
+  }
+
+  getLoopProgress(): number {
+    return this.looper?.getProgress() ?? 0;
+  }
+
+  getLoopVisualState(): ReturnType<Looper['getVisualState']> {
+    return this.looper?.getVisualState() ?? {
+      progress: 0,
+      state: 'idle',
+      layers: [],
+    };
+  }
+
   panic(): void {
+    this.looper?.disarm();
     useStore.getState().set({ bypass: true });
     this.dispatchEvents(this.v2m.allOff());
     this.instrument?.releaseAll();
@@ -214,6 +259,7 @@ export class AudioEngine {
     this.currentSource?.disconnect();
     this.bufferSource?.stop();
     this.stream?.getTracks().forEach((track) => track.stop());
+    this.looper?.dispose();
     this.metronome?.dispose();
     this.instrument?.dispose();
     this.fxBus?.dispose();
@@ -229,7 +275,14 @@ export class AudioEngine {
     this.instrument = null;
     this.fxBus = null;
     this.metronome = null;
+    this.looper = null;
     this.lastState = null;
+    useStore.getState().set({
+      looperState: 'idle',
+      looperLayers: [],
+      looperEpochSamples: 0,
+      loopLengthSamples: 0,
+    });
   }
 
   private startEventPump(): void {

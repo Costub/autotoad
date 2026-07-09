@@ -36,10 +36,10 @@
 .controls {
   min-width: 0;
   display: grid;
-  grid-template-columns: 58px 126px repeat(5, minmax(72px, 1fr)) 58px;
+  grid-template-columns: minmax(58px, 0.7fr) minmax(118px, 1.2fr) repeat(5, minmax(76px, 1fr)) minmax(64px, 0.7fr);
   align-items: center;
   gap: 10px;
-  padding-left: 14px;
+  padding: 0 6px 0 14px;
 }
 
 .controlLabel {
@@ -202,6 +202,7 @@
 .fxControls {
   min-width: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 8px 4px 8px 14px;
@@ -209,7 +210,7 @@
 
 .fxControls {
   display: grid;
-  grid-template-columns: repeat(3, minmax(90px, 1fr)) auto minmax(90px, 1fr) auto;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
 }
 
 .fxControls .rangeControl {
@@ -218,6 +219,7 @@
 
 .segment {
   display: flex;
+  flex-wrap: wrap;
 }
 
 .segment button,
@@ -313,12 +315,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 20px;
   padding-left: 14px;
 }
 
 .presetButtons {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -366,13 +370,33 @@
 }
 
 @media (max-width: 800px) {
+  .groupRow {
+    grid-template-columns: 1fr;
+  }
+
+  .groupHeading {
+    min-height: 34px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 4px 4px;
+    border-right: 0;
+  }
+
   .controls {
-    grid-template-columns: 52px 110px repeat(5, minmax(62px, 1fr)) 54px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px;
+    padding: 0 4px 8px;
   }
 
   .presetButton {
     min-width: 58px;
+  }
+
+  .harmonyControls,
+  .strip,
+  .fxControls {
+    padding-left: 4px;
   }
 }
 

@@ -1,5 +1,6 @@
 .console {
   width: min(100%, 960px);
+  max-height: calc(100vh - 20px);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -29,9 +30,13 @@
 }
 
 .status {
+  max-width: 260px;
+  overflow: hidden;
   color: var(--muted);
   font-size: 13px;
   letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .headerButton,
@@ -87,12 +92,17 @@
 }
 
 .dock {
-  min-height: 334px;
+  min-height: 0;
+  max-height: min(46vh, 430px);
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
+  overflow-y: auto;
+  overflow-x: hidden;
   border-top: 1px solid var(--hairline);
   opacity: 1;
   transition: opacity 150ms var(--ease);
+  scrollbar-color: var(--hairline) transparent;
 }
 
 .perfStrip {
@@ -104,8 +114,10 @@
 }
 
 .performanceMode .wordmarkBar {
+  height: 0;
+  overflow: hidden;
+  border-bottom: 0;
   opacity: 0;
-  pointer-events: none;
 }
 
 .performanceMode .stageFrame {
@@ -127,6 +139,7 @@
 .performanceMode .perfStrip {
   min-height: 46px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 10px;
@@ -145,8 +158,11 @@
   }
 
   .dock {
-    min-height: 334px;
     padding-inline: 10px;
+  }
+
+  .status {
+    max-width: 150px;
   }
 }
 

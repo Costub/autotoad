@@ -86,7 +86,7 @@ export function LooperPanel() {
             aria-pressed={metronomeOn}
             onClick={() => set({ metronomeOn: !metronomeOn })}
           >
-            Click
+            {metronomeOn ? 'Metro on' : 'Metro off'}
           </button>
 
           <button

@@ -36,7 +36,7 @@ async function ensureLandmarker(): Promise<void> {
     const origin = self.location.origin;
     const wasmBaseUrl = new URL('/mediapipe/wasm', origin).toString();
     const modelUrl = new URL('/mediapipe/hand_landmarker.task', origin).toString();
-    const fileset = await FilesetResolver.forVisionTasks(wasmBaseUrl);
+    const fileset = await FilesetResolver.forVisionTasks(wasmBaseUrl, false);
     landmarker = await HandLandmarker.createFromOptions(fileset, {
       baseOptions: {
         modelAssetPath: modelUrl,

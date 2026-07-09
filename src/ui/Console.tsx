@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { engine } from '../audio/engine';
 import { useStore } from '../state/store';
 import { CamThumb } from './CamThumb';
 import { ControlsPanel } from './ControlsPanel';
 import { GestureHud } from './GestureHud';
+import { HelpOverlay } from './HelpOverlay';
 import { LooperPanel } from './LooperPanel';
 import { StartGate } from './StartGate';
 import { PitchStage } from './pixi/PitchStage';
@@ -15,7 +16,9 @@ export function Console() {
   const camThumbVisible = useStore((state) => state.camThumbVisible);
   const xyPadMode = useStore((state) => state.xyPadMode);
   const gestureStatus = useStore((state) => state.gestureStatus);
+  const metronomeOn = useStore((state) => state.metronomeOn);
   const set = useStore((state) => state.set);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -30,6 +33,7 @@ export function Console() {
   return (
     <>
       {!started ? <StartGate /> : null}
+      {helpOpen ? <HelpOverlay onClose={() => setHelpOpen(false)} /> : null}
       <main className={`${styles.console} ${performanceMode ? styles.performanceMode : ''}`}>
         <header className={styles.wordmarkBar}>
           <h1 className={styles.wordmark}>AUTOTOAD</h1>
@@ -39,6 +43,13 @@ export function Console() {
             </span>
             {started ? (
               <>
+                <button
+                  className={styles.headerButton}
+                  type="button"
+                  onClick={() => setHelpOpen(true)}
+                >
+                  Help
+                </button>
                 <button
                   className={`${styles.headerButton} ${xyPadMode ? styles.headerButtonActive : ''}`}
                   type="button"
@@ -77,8 +88,16 @@ export function Console() {
           <div className={styles.perfStrip}>
             <button type="button" onClick={() => engine.toggleLoopRecord()}>● Loop</button>
             <button type="button" onClick={() => engine.toggleTake()}>● Take</button>
+            <button
+              type="button"
+              aria-pressed={metronomeOn}
+              onClick={() => set({ metronomeOn: !metronomeOn })}
+            >
+              {metronomeOn ? 'Metro on' : 'Metro off'}
+            </button>
             <button type="button" onClick={() => engine.panic()}>Panic</button>
-            <span>P toggles performance mode</span>
+            <button type="button" onClick={() => set({ performanceMode: false })}>Exit Perf</button>
+            <span>P also exits</span>
           </div>
         ) : null}
         <div className={styles.dock} aria-label="Controls dock">

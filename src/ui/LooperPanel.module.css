@@ -33,6 +33,7 @@
 .strip {
   min-width: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 8px 4px 8px 14px;
@@ -118,7 +119,7 @@
 .progress {
   height: 3px;
   min-width: 86px;
-  flex: 1 1 120px;
+  flex: 1 1 160px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--hairline);
@@ -194,12 +195,31 @@
 }
 
 @media (max-width: 800px) {
+  .transport,
+  .layers {
+    grid-template-columns: 1fr;
+  }
+
+  .heading {
+    min-height: 34px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 4px 4px;
+    border-right: 0;
+  }
+
   .strip {
     flex-wrap: wrap;
+    padding-left: 4px;
   }
 
   .lane {
-    grid-template-columns: minmax(80px, 1fr) 48px minmax(72px, 0.8fr) minmax(72px, 0.8fr) 30px;
+    grid-template-columns: minmax(90px, 1fr) 58px 30px;
+  }
+
+  .miniRange {
+    grid-column: 1 / -1;
   }
 }
 

@@ -2,6 +2,7 @@ import {
   Application,
   Container,
   Graphics,
+  Text,
   TextureStyle,
   type Ticker,
 } from 'pixi.js';
@@ -32,6 +33,7 @@ const MAX_FIREFLIES = 8;
 const FIREFLY_Y_PX = 18;
 const FIREFLY_SPACING_PX = 22;
 const FIREFLY_START_X_PX = 42;
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
 const TADPOLE_NOTE_PARAMS = [
   P.harmonyNote0,
   P.harmonyNote1,
@@ -43,6 +45,7 @@ interface RowVisual {
   root: Container;
   lilypads: Container[];
   ripple: Container;
+  label: Text;
 }
 
 interface BubbleVisual {
@@ -344,9 +347,27 @@ function createRows(width: number): RowVisual[] {
     const ripple = placeholderSprites.ripple();
     ripple.scale.x = width / 24;
     root.addChild(ripple);
-    rows.push({ root, lilypads, ripple });
+    const label = new Text({
+      text: '',
+      style: {
+        fill: 0x8fa6a3,
+        fontFamily: 'monospace',
+        fontSize: 11,
+        fontWeight: '500',
+      },
+    });
+    label.anchor.set(0, 0.5);
+    label.position.set(8, 0);
+    root.addChild(label);
+    rows.push({ root, lilypads, ripple, label });
   }
   return rows;
+}
+
+function noteLabel(midi: number): string {
+  const name = NOTE_NAMES[((midi % 12) + 12) % 12] ?? 'C';
+  const octave = Math.floor(midi / 12) - 1;
+  return `${name}${octave}`;
 }
 
 function updateRows(
@@ -366,6 +387,8 @@ function updateRows(
     const inScale = degreeOf(midi, key) >= 0;
     row.root.y = height / 2 - (midi - centerMidi) * rowHeight;
     row.ripple.visible = !inScale;
+    row.label.text = noteLabel(midi);
+    row.label.alpha = inScale ? 0.74 : 0.32;
 
     for (
       let lilypadIndex = 0;

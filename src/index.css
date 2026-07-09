@@ -29,7 +29,6 @@ body,
 
 body {
   min-height: 100vh;
-  overflow: hidden;
   background: var(--bg);
   color: var(--text);
   font-family: Inter, system-ui, sans-serif;
@@ -39,13 +38,4 @@ body {
 
 #root {
   min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding-inline: 20px;
-}
-
-@media (max-width: 640px) {
-  #root {
-    padding-inline: 0;
-  }
 }

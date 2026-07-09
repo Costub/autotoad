@@ -12,7 +12,7 @@ import {
 } from '../types';
 import styles from './controls.module.css';
 
-const VALUE_HIDE_DELAY_MS = 800;
+const VALUE_ACTIVE_HOLD_MS = 800;
 
 const KEY_NAMES = [
   'C',
@@ -71,7 +71,6 @@ interface RangeControlProps {
   max: number;
   step: number;
   value: number;
-  heldKey?: string;
   formatValue: (value: number) => string;
   onChange: (value: number) => void;
 }
@@ -82,57 +81,54 @@ function RangeControl({
   max,
   step,
   value,
-  heldKey,
   formatValue,
   onChange,
 }: RangeControlProps) {
-  const [showValue, setShowValue] = useState(false);
-  const gestureHeld = useStore((state) => heldKey ? state.gestureHeld[heldKey] === true : false);
-  const hideTimerRef = useRef<number | null>(null);
+  const [active, setActive] = useState(false);
+  const holdTimerRef = useRef<number | null>(null);
 
   useEffect(
     () => () => {
-      if (hideTimerRef.current !== null) {
-        globalThis.clearTimeout(hideTimerRef.current);
+      if (holdTimerRef.current !== null) {
+        globalThis.clearTimeout(holdTimerRef.current);
       }
     },
     [],
   );
 
-  const revealValue = (): void => {
-    setShowValue(true);
-    if (hideTimerRef.current !== null) {
-      globalThis.clearTimeout(hideTimerRef.current);
+  const markActive = (): void => {
+    setActive(true);
+    if (holdTimerRef.current !== null) {
+      globalThis.clearTimeout(holdTimerRef.current);
     }
-    hideTimerRef.current = globalThis.setTimeout(() => {
-      setShowValue(false);
-    }, VALUE_HIDE_DELAY_MS);
+    holdTimerRef.current = globalThis.setTimeout(() => {
+      setActive(false);
+    }, VALUE_ACTIVE_HOLD_MS);
   };
 
   return (
-    <label className={`${styles.rangeControl} ${gestureHeld ? styles.gestureGlow : ''}`}>
-      <span className={styles.controlLabel}>{label}</span>
+    <label className={styles.rangeControl}>
+      <span className={styles.controlHead}>
+        <span className={styles.controlLabel}>{label}</span>
+        <span
+          className={`${styles.valueReadout} ${active ? styles.valueReadoutActive : ''}`}
+        >
+          {formatValue(value)}
+        </span>
+      </span>
       <input
         type="range"
         min={min}
         max={max}
         step={step}
         value={value}
-        onPointerDown={revealValue}
-        onFocus={revealValue}
+        onPointerDown={markActive}
+        onFocus={markActive}
         onChange={(event) => {
-          revealValue();
+          markActive();
           onChange(Number(event.currentTarget.value));
         }}
       />
-      <span
-        className={`${styles.valueReadout} ${
-          showValue ? styles.valueReadoutVisible : ''
-        }`}
-        aria-hidden={!showValue}
-      >
-        {formatValue(value)}
-      </span>
     </label>
   );
 }
@@ -237,8 +233,8 @@ export function ControlsPanel() {
 
   return (
     <div className={styles.panel}>
-      <div className={`${styles.groupRow} ${styles.compactRow}`}>
-        <div className={styles.groupHeading}><span>Input</span></div>
+      <section className={`${styles.group} ${styles.groupInput}`}>
+        <header className={styles.groupHeader}><span>Input</span></header>
         <div className={styles.strip}>
           <Segment
             label="Input source"
@@ -268,16 +264,19 @@ export function ControlsPanel() {
             ● Take{isRecordingTake ? ` ${takeSeconds}s` : ''}
           </button>
         </div>
-      </div>
-      <div className={styles.groupRow}>
-        <div className={styles.groupHeading}>
+      </section>
+
+      <section className={`${styles.group} ${styles.groupTune}`}>
+        <header className={styles.groupHeader}>
           <span>Tune</span>
           <span className={styles.latency}>~{Math.round(latencyMs)} ms</span>
-        </div>
+        </header>
 
         <div className={styles.controls}>
           <label className={styles.selectControl}>
-            <span className={styles.controlLabel}>Key</span>
+            <span className={styles.controlHead}>
+              <span className={styles.controlLabel}>Key</span>
+            </span>
             <select
               value={key.tonicPc}
               onChange={(event) => {
@@ -297,8 +296,10 @@ export function ControlsPanel() {
             </select>
           </label>
 
-          <label className={`${styles.selectControl} ${styles.scaleControl}`}>
-            <span className={styles.controlLabel}>Scale</span>
+          <label className={styles.selectControl}>
+            <span className={styles.controlHead}>
+              <span className={styles.controlLabel}>Scale</span>
+            </span>
             <select
               value={key.scale}
               onChange={(event) => {
@@ -324,7 +325,6 @@ export function ControlsPanel() {
             max={400}
             step={1}
             value={retuneMs}
-            heldKey="retuneMs"
             formatValue={(value) => (value === 0 ? 'snap' : `${value} ms`)}
             onChange={(value) => set({ retuneMs: value })}
           />
@@ -334,7 +334,6 @@ export function ControlsPanel() {
             max={1}
             step={0.01}
             value={correctionAmount}
-            heldKey="correctionAmount"
             formatValue={(value) => `${Math.round(value * 100)}%`}
             onChange={(value) => set({ correctionAmount: value })}
           />
@@ -344,7 +343,6 @@ export function ControlsPanel() {
             max={24}
             step={1}
             value={pitchShift}
-            heldKey="pitchShift"
             formatValue={signedSemitones}
             onChange={(value) => set({ pitchShift: value })}
           />
@@ -354,7 +352,6 @@ export function ControlsPanel() {
             max={12}
             step={1}
             value={formantShift}
-            heldKey="formantShift"
             formatValue={signedSemitones}
             onChange={(value) => set({ formantShift: value })}
           />
@@ -364,7 +361,6 @@ export function ControlsPanel() {
             max={1}
             step={0.01}
             value={wetLevel}
-            heldKey="wetLevel"
             formatValue={(value) => `${Math.round(value * 100)}% wet`}
             onChange={(value) => {
               set({ wetLevel: value, dryLevel: 1 - value });
@@ -380,12 +376,12 @@ export function ControlsPanel() {
             Bypass
           </button>
         </div>
-      </div>
+      </section>
 
-      <div className={`${styles.groupRow} ${styles.harmonyRow}`}>
-        <div className={styles.groupHeading}>
+      <section className={`${styles.group} ${styles.groupHarmony}`}>
+        <header className={styles.groupHeader}>
           <span>Harmony</span>
-        </div>
+        </header>
         <div className={styles.harmonyControls}>
           <div className={styles.presetButtons} aria-label="Harmony preset">
             {HARMONY_OPTIONS.map((option) => {
@@ -414,15 +410,15 @@ export function ControlsPanel() {
               max={1}
               step={0.01}
               value={harmonySpread}
-              heldKey="harmonySpread"
               formatValue={(value) => `${Math.round(value * 100)}%`}
               onChange={(value) => set({ harmonySpread: value })}
             />
           </div>
         </div>
-      </div>
-      <div className={`${styles.groupRow} ${styles.compactRow}`}>
-        <div className={styles.groupHeading}><span>Instrument</span></div>
+      </section>
+
+      <section className={`${styles.group} ${styles.groupInstrument}`}>
+        <header className={styles.groupHeader}><span>Instrument</span></header>
         <div className={styles.strip}>
           <Segment label="Engine mode" options={MODE_OPTIONS} value={engineMode} onChange={(value) => set({ engineMode: value })} />
           <Segment label="Instrument preset" options={INSTRUMENT_OPTIONS} value={instrument} onChange={(value) => set({ instrument: value })} />
@@ -436,18 +432,21 @@ export function ControlsPanel() {
             Chord follow
           </button>
         </div>
-      </div>
-      <div className={`${styles.groupRow} ${styles.fxRow}`}>
-        <div className={styles.groupHeading}><span>FX</span></div>
-        <div className={styles.fxControls}>
-          <RangeControl label="Reverb" min={0} max={1} step={0.01} value={reverbSend} heldKey="reverbSend" formatValue={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set({ reverbSend: v })} />
-          <RangeControl label="Decay" min={0.5} max={8} step={0.1} value={reverbDecay} heldKey="reverbDecay" formatValue={(v) => `${v.toFixed(1)} s`} onChange={(v) => set({ reverbDecay: v })} />
+      </section>
+
+      <section className={`${styles.group} ${styles.groupFx}`}>
+        <header className={styles.groupHeader}><span>FX</span></header>
+        <div className={styles.controls}>
+          <RangeControl label="Reverb" min={0} max={1} step={0.01} value={reverbSend} formatValue={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set({ reverbSend: v })} />
+          <RangeControl label="Decay" min={0.5} max={8} step={0.1} value={reverbDecay} formatValue={(v) => `${v.toFixed(1)} s`} onChange={(v) => set({ reverbDecay: v })} />
           <RangeControl label="Delay" min={0} max={1} step={0.01} value={delaySend} formatValue={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set({ delaySend: v })} />
-          <Segment label="Delay division" options={DELAY_OPTIONS.map((value) => ({ value, label: value }))} value={delayTime} onChange={(value) => set({ delayTime: value })} />
-          <RangeControl label="Feedback" min={0} max={0.75} step={0.01} value={delayFeedback} heldKey="delayFeedback" formatValue={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set({ delayFeedback: v })} />
-          <button className={styles.toggle} type="button" onClick={() => engine.panic()}>Panic</button>
+          <RangeControl label="Feedback" min={0} max={0.75} step={0.01} value={delayFeedback} formatValue={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set({ delayFeedback: v })} />
+          <div className={styles.fxFooter}>
+            <Segment label="Delay division" options={DELAY_OPTIONS.map((value) => ({ value, label: value }))} value={delayTime} onChange={(value) => set({ delayTime: value })} />
+            <button className={styles.toggle} type="button" onClick={() => engine.panic()}>Panic</button>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

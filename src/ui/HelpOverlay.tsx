@@ -39,14 +39,6 @@ export function HelpOverlay({ onClose }: HelpOverlayProps) {
             <li>Each layer has mute, volume, reverb send, and clear controls.</li>
           </HelpCard>
 
-          <HelpCard title="Gestures">
-            <li><strong>Right pinch + vertical drag</strong>: Retune. <strong>Left pinch + drag</strong>: Formant.</li>
-            <li><strong>Right open-hand slide</strong>: Delay division. <strong>Left slide</strong>: Reverb decay.</li>
-            <li><strong>XY mode</strong>: right index finger controls delay feedback on X and reverb on Y.</li>
-            <li><strong>Right flick</strong>: previous/next instrument. <strong>Right fist hold</strong>: loop record.</li>
-            <li><strong>Both fists</strong>: Panic. Denying webcam keeps the rest of AUTOTOAD working.</li>
-          </HelpCard>
-
           <HelpCard title="Stage and shortcuts">
             <li><strong>Note labels</strong> on the left show pitch rows; the toad climbs as pitch rises.</li>
             <li><strong>Green ghost</strong>: corrected pitch. <strong>Tadpoles</strong>: harmony notes.</li>

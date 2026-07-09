@@ -1,23 +1,34 @@
+/* ControlsPanel — five self-contained group cards that participate directly
+   in the Console dock grid (the panel root uses display:contents). */
+
 .panel {
-  width: 100%;
+  display: contents;
+}
+
+.group {
   min-width: 0;
   display: flex;
   flex-direction: column;
-}
-
-.groupRow {
-  display: grid;
-  grid-template-columns: 112px minmax(0, 1fr);
-  align-items: stretch;
-}
-
-.groupHeading {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
   gap: 8px;
-  padding: 0 14px 0 2px;
-  border-right: 1px solid var(--hairline);
+  padding: 8px 10px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.groupInput { grid-area: input; }
+.groupTune { grid-area: tune; }
+.groupHarmony { grid-area: harmony; }
+.groupInstrument { grid-area: instrument; }
+.groupFx { grid-area: fx; }
+
+.groupHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--hairline);
   color: var(--text);
   font-size: 13px;
   font-weight: 500;
@@ -31,15 +42,23 @@
   font-weight: 400;
   text-transform: none;
   letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .controls {
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(106px, 1fr));
-  align-items: center;
-  gap: 10px 12px;
-  padding: 0 6px 0 14px;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  align-items: end;
+  gap: 8px 14px;
+}
+
+.controlHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 16px;
 }
 
 .controlLabel {
@@ -49,15 +68,27 @@
   white-space: nowrap;
 }
 
+.valueReadout {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  transition: color 180ms var(--ease);
+}
+
+.valueReadoutActive {
+  color: var(--accent);
+}
+
 .selectControl,
 .rangeControl {
   min-width: 0;
-  min-height: 72px;
-  position: relative;
+  min-height: 46px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 10px;
+  justify-content: end;
+  gap: 5px;
 }
 
 .selectControl select {
@@ -80,7 +111,7 @@
 
 .rangeControl input {
   width: 100%;
-  height: 12px;
+  height: 28px;
   margin: 0;
   appearance: none;
   background: transparent;
@@ -125,43 +156,11 @@
   outline: none;
 }
 
-.gestureGlow input::-webkit-slider-runnable-track {
-  background: var(--accent);
-  box-shadow: 0 0 12px rgb(93 203 106 / 45%);
-}
-
-.gestureGlow input::-webkit-slider-thumb {
-  background: var(--accent);
-}
-
-.gestureGlow input::-moz-range-track {
-  background: var(--accent);
-  box-shadow: 0 0 12px rgb(93 203 106 / 45%);
-}
-
-.gestureGlow input::-moz-range-thumb {
-  background: var(--accent);
-}
-
-.valueReadout {
-  position: absolute;
-  right: 0;
-  top: 8px;
-  color: var(--accent);
-  font-size: 13px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 180ms var(--ease);
-}
-
-.valueReadoutVisible {
-  opacity: 1;
-}
-
 .bypass {
-  align-self: center;
+  align-self: end;
   min-height: 30px;
-  padding: 0 7px;
+  margin-bottom: 11px;
+  padding: 0 9px;
   border: 1px solid var(--hairline);
   border-radius: 3px;
   color: var(--muted);
@@ -188,34 +187,21 @@
   background: var(--accent);
 }
 
-.harmonyRow {
-  min-height: 70px;
-  border-top: 1px solid var(--hairline);
-}
-
-.compactRow,
-.fxRow {
-  min-height: 62px;
-  border-bottom: 1px solid var(--hairline);
-}
-
-.strip,
-.fxControls {
+.strip {
   min-width: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px 12px;
-  padding: 8px 4px 8px 14px;
 }
 
-.fxControls {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
-}
-
-.fxControls .rangeControl {
-  height: 54px;
+.fxFooter {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 12px;
 }
 
 .segment {
@@ -319,17 +305,15 @@
 
 .takeActive {
   color: var(--bg);
-  border-color: #f2b24c;
-  background: #f2b24c;
+  border-color: var(--amber);
+  background: var(--amber);
 }
 
 .harmonyControls {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: end;
   flex-wrap: wrap;
-  gap: 20px;
-  padding: 8px 4px 8px 14px;
+  gap: 10px 20px;
 }
 
 .presetButtons {
@@ -339,7 +323,7 @@
 }
 
 .presetButton {
-  min-width: 66px;
+  min-width: 62px;
   height: 30px;
   padding: 0 9px;
   border: 1px solid var(--hairline);
@@ -373,53 +357,9 @@
 }
 
 .spreadControl {
-  width: 150px;
-  padding-right: 4px;
-}
-
-.spreadControl .rangeControl {
-  height: 62px;
-}
-
-@media (max-width: 800px) {
-  .groupRow {
-    grid-template-columns: 1fr;
-  }
-
-  .groupHeading {
-    min-height: 34px;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 4px 4px;
-    border-right: 0;
-  }
-
-  .controls {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 7px;
-    padding: 0 4px 8px;
-  }
-
-  .presetButton {
-    min-width: 58px;
-  }
-
-  .harmonyControls,
-  .strip,
-  .fxControls {
-    padding-left: 4px;
-  }
-}
-
-@media (max-width: 1180px) {
-  .controls {
-    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-  }
-
-  .fxControls {
-    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
-  }
+  flex: 1 1 150px;
+  min-width: 130px;
+  max-width: 240px;
 }
 
 @media (prefers-reduced-motion: reduce) {

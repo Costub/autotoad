@@ -57,11 +57,6 @@ export interface AppState {
   looperLatencyOffsetSamples: number;
 
   performanceMode: boolean;
-  camThumbVisible: boolean;
-  xyPadMode: boolean;
-  gesturesEnabled: boolean;
-  gestureStatus: string;
-  gestureHeld: Record<string, boolean>;
 
   latencyMs: number;
 
@@ -90,11 +85,12 @@ type PersistedSettings = Pick<AppState,
   | 'bpm'
   | 'bars'
   | 'metronomeOn'
-  | 'camThumbVisible'
-  | 'xyPadMode'
 >;
 
-const STORAGE_KEY = 'autotoad-settings-v1';
+const STORAGE_KEY = 'autotoad-settings-v2';
+const LEGACY_STORAGE_KEY = 'autotoad-settings-v1';
+/** Keys persisted by v1 that no longer exist (camera/gesture removal). */
+const LEGACY_KEYS = ['camThumbVisible', 'xyPadMode'] as const;
 
 const defaultState = {
   started: false,
@@ -130,11 +126,6 @@ const defaultState = {
   loopLengthSamples: 0,
   looperLatencyOffsetSamples: 0,
   performanceMode: false,
-  camThumbVisible: true,
-  xyPadMode: false,
-  gesturesEnabled: false,
-  gestureStatus: 'Gestures off',
-  gestureHeld: {},
   latencyMs: 0,
 } satisfies Omit<AppState, 'set'>;
 
@@ -162,9 +153,12 @@ useStore.subscribe((state) => {
 function loadPersistedSettings(): Partial<PersistedSettings> {
   if (typeof localStorage === 'undefined') return {};
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return {};
-    return sanitizePersisted(JSON.parse(raw) as Partial<PersistedSettings>);
+    const parsed = JSON.parse(raw) as Partial<PersistedSettings> & Record<string, unknown>;
+    for (const legacyKey of LEGACY_KEYS) delete parsed[legacyKey];
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+    return sanitizePersisted(parsed);
   } catch {
     return {};
   }
@@ -193,8 +187,6 @@ function selectPersistedSettings(state: AppState): PersistedSettings {
     bpm: state.bpm,
     bars: state.bars,
     metronomeOn: state.metronomeOn,
-    camThumbVisible: state.camThumbVisible,
-    xyPadMode: state.xyPadMode,
   };
 }
 

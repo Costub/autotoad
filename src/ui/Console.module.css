@@ -1,13 +1,19 @@
+/* Console shell — page flows top-to-bottom and scrolls naturally when the
+   viewport is short. On typical laptop screens everything fits unscrolled:
+   header (48px) + stage (height-budgeted via --stage-h) + dock card grid. */
+
 .console {
-  width: min(100%, 1280px);
-  max-height: calc(100vh - 16px);
+  width: min(100%, 1360px);
+  margin-inline: auto;
+  padding-inline: clamp(12px, 3vw, 28px);
+  padding-bottom: 12px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
 }
 
 .wordmarkBar {
-  height: 52px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -73,31 +79,17 @@
 }
 
 .stageFrame {
-  min-height: 0;
-  flex: 1;
-  display: grid;
-  place-items: center;
-  padding: 18px clamp(12px, 3vw, 32px);
-}
-
-.stageDeck {
-  width: 100%;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: stretch;
-  gap: 14px;
-}
-
-.stageDeckSplit {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  padding: 10px 0 12px;
 }
 
 .stage {
-  width: 100%;
-  min-height: 260px;
-  max-height: min(54vh, 620px);
+  /* Height budget: 100vh minus header + paddings + a typical dock height.
+     Tune the 620px constant if the fit target drifts. Width follows from the
+     160:144 stage ratio; narrow windows clamp on width and letterbox. */
+  --stage-h: clamp(250px, calc(100vh - 620px), 520px);
+  width: min(100%, calc(var(--stage-h) * 160 / 144));
   aspect-ratio: 160 / 144;
+  margin-inline: auto;
   position: relative;
   overflow: hidden;
   border: 1px solid var(--hairline);
@@ -110,33 +102,46 @@
     0 18px 52px rgb(0 0 0 / 18%);
 }
 
-.cameraPane {
-  min-width: 0;
-  min-height: 260px;
-  max-height: min(54vh, 620px);
-  aspect-ratio: 160 / 144;
-}
-
+/* Dock: responsive grid of group cards. ControlsPanel contributes its five
+   cards via display:contents; LooperPanel is the sixth (area: loop). */
 .dock {
-  min-height: 0;
-  max-height: min(48vh, 455px);
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  overflow-y: auto;
-  overflow-x: hidden;
-  border-top: 1px solid var(--hairline);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-areas:
+    'input harmony instrument'
+    'tune  tune    fx'
+    'loop  loop    loop';
   opacity: 1;
   transition: opacity 150ms var(--ease);
-  scrollbar-color: var(--hairline) transparent;
+}
+
+@media (max-width: 1199px) {
+  .dock {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'input harmony'
+      'tune tune'
+      'instrument fx'
+      'loop loop';
+  }
+}
+
+@media (max-width: 759px) {
+  .dock {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'input'
+      'tune'
+      'harmony'
+      'instrument'
+      'fx'
+      'loop';
+  }
 }
 
 .perfStrip {
   display: none;
-}
-
-.performanceMode {
-  width: min(100%, 1320px);
 }
 
 .performanceMode .wordmarkBar {
@@ -151,19 +156,11 @@
 }
 
 .performanceMode .stage {
-  max-height: calc(100vh - 72px);
-}
-
-.performanceMode .cameraPane {
-  max-height: calc(100vh - 72px);
+  --stage-h: clamp(280px, calc(100vh - 130px), calc(100vh - 130px));
 }
 
 .performanceMode .dock {
-  height: 0;
-  min-height: 0;
-  overflow: hidden;
-  opacity: 0;
-  pointer-events: none;
+  display: none;
 }
 
 .performanceMode .perfStrip {
@@ -181,23 +178,6 @@
 @media (max-width: 640px) {
   .wordmarkBar {
     height: 46px;
-  }
-
-  .stageFrame {
-    padding-inline: 12px;
-  }
-
-  .stageDeckSplit {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .stage,
-  .cameraPane {
-    min-height: 220px;
-  }
-
-  .dock {
-    padding-inline: 10px;
   }
 
   .status {

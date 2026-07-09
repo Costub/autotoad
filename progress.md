@@ -1,11 +1,39 @@
 # AUTOTOAD Progress
 
-Last updated: 2026-07-09
+Last updated: 2026-07-10
 
 ## Current status
 
 Phases 0–6 are implemented. Every phase is maintained as an individual
 milestone commit.
+
+**2026-07-10 — camera/gesture feature removed + full UI revamp.** By product
+decision the webcam hand-tracking feature (Phase 6's MediaPipe integration)
+was removed entirely: `src/vision/`, GestureHud, CamThumb, the MediaPipe
+assets/scripts, the `@mediapipe/tasks-vision` dependency, and all gesture
+store fields are gone (restorable from git history). The layout was rebuilt
+at the same time:
+
+- The page now scrolls naturally when the viewport is short (no more
+  `overflow: hidden` clipping); on ≥1440×860 everything fits unscrolled.
+- The dock is a responsive grid of six self-contained group cards
+  (Input / Harmony / Instrument / Tune / FX / Loop), 3 → 2 → 1 columns at
+  1200px / 760px breakpoints, replacing the old full-width gutter rows and
+  the hidden internal dock scrollbar.
+- The stage is height-budgeted via `--stage-h` in `Console.module.css`
+  (clamped `100vh - 620px`) so header + stage + dock share the viewport;
+  performance mode still maximizes the stage.
+- Slider value readouts are now static inline (label left, value right,
+  always visible, accent while adjusting) — the absolute-positioned overlap
+  bug is structurally impossible now.
+- Looper layer lanes got roomy sliders (≥130px, previously 86px).
+- Settings persistence moved to `autotoad-settings-v2` with a one-shot
+  migration from v1 that drops the removed camera keys.
+
+Verified: 55/55 tests, strict build, zero element overlaps and correct fit
+measured at 1920×1080 / 1440×860 (fits) and 1366×768 (graceful scroll),
+2-col/1-col reflow without horizontal scroll, perf mode, loop recording,
+and the v1→v2 settings migration.
 
 | Phase | Status | Commit |
 |---|---|---|
@@ -144,6 +172,10 @@ milestone commit.
 
 ### Phase 6 — hands and polish
 
+> **Note (2026-07-10):** the hand-tracking/camera portion described below was
+> subsequently removed by product decision — see “Current status”. Kept here
+> as historical record of what the phase delivered.
+
 - Same-origin MediaPipe asset pipeline:
   - `scripts/copy-mediapipe.mjs` copies wasm files to `public/mediapipe/wasm`;
   - `predev` and `prebuild` run the copy automatically;
@@ -210,11 +242,10 @@ npm.cmd run build
 
 Current result:
 
-- 8 test files passed.
-- 62 tests passed.
+- 7 test files passed.
+- 55 tests passed.
 - Strict TypeScript production build passed.
 - Production output contains a separately bundled AudioWorklet.
-- Production output contains a separately bundled vision worker.
 - `npm.cmd run preview -- --host 127.0.0.1 --port 4176` served
   `Cross-Origin-Opener-Policy: same-origin` and
   `Cross-Origin-Embedder-Policy: require-corp`.
@@ -320,7 +351,7 @@ the microphone/AudioWorklet permission path.
 10. Watch the stage top row: fireflies should pulse together on loop boundaries,
     muted layers should dim, and the armed/recording slot should blink amber.
 
-### Phase 6 gestures and polish test
+### Phase 6 gestures and polish test (obsolete — gestures removed 2026-07-10)
 
 1. Run `npm.cmd run copy:mediapipe`. Confirm wasm assets exist under
    `public/mediapipe/wasm`.

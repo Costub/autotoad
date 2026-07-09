@@ -1,4 +1,4 @@
-// Shared types used across main thread, worklet, and vision worker.
+// Shared types used across the main thread and the audio worklet.
 // This file must stay worklet-safe: types + const enums only, no DOM.
 
 export type ScaleName =
@@ -29,21 +29,4 @@ export interface NoteEvent {
   velocity?: number;
   cents?: number;
   time: number;
-}
-
-export interface HandFrame {
-  handedness: 'Left' | 'Right';
-  pinch: number;
-  pinchClosed: boolean;
-  height: number;
-  x: number;
-  indexTip: { x: number; y: number };
-  velocity: { dx: number; dy: number };
-  fingersUp: number;
-  fist: boolean;
-}
-
-export interface GestureFrame {
-  t: number;
-  hands: HandFrame[];
 }

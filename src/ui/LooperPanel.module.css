@@ -1,20 +1,32 @@
+/* Looper — the sixth dock card (grid-area: loop), full dock width. */
+
 .panel {
-  border-top: 1px solid var(--hairline);
+  grid-area: loop;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--panel);
 }
 
-.transport {
-  min-height: 66px;
-  display: grid;
-  grid-template-columns: 66px minmax(0, 1fr);
+.transport,
+.layers {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .heading {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 5px;
-  padding-right: 12px;
-  border-right: 1px solid var(--hairline);
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--hairline);
   color: var(--text);
   font-size: 13px;
   font-weight: 500;
@@ -24,10 +36,11 @@
 
 .status {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 400;
   text-transform: none;
   letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .strip {
@@ -36,7 +49,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  padding: 8px 4px 8px 14px;
 }
 
 .stepper,
@@ -57,6 +69,7 @@
   min-width: 72px;
   color: var(--text);
   text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .button,
@@ -118,8 +131,8 @@
 
 .progress {
   height: 3px;
-  min-width: 86px;
-  flex: 1 1 160px;
+  min-width: 140px;
+  flex: 1 1 180px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--hairline);
@@ -134,23 +147,19 @@
   background: var(--amber);
 }
 
-.layers {
-  display: grid;
-  grid-template-columns: 66px minmax(0, 1fr);
-  border-top: 1px solid var(--hairline);
-}
-
 .laneList {
   min-width: 0;
-  padding: 6px 4px 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .lane {
   min-height: 36px;
   display: grid;
-  grid-template-columns: minmax(92px, 1fr) 54px minmax(86px, 0.8fr) minmax(86px, 0.8fr) 34px;
+  grid-template-columns: minmax(120px, 1.2fr) auto minmax(130px, 1fr) minmax(130px, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .laneMuted {
@@ -172,7 +181,7 @@
   align-items: center;
   gap: 6px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .miniRange input {
@@ -182,7 +191,7 @@
 }
 
 .empty {
-  padding: 10px 0;
+  padding: 4px 0;
 }
 
 @keyframes amberPulse {
@@ -194,32 +203,14 @@
   }
 }
 
-@media (max-width: 800px) {
-  .transport,
-  .layers {
-    grid-template-columns: 1fr;
-  }
-
-  .heading {
-    min-height: 34px;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 4px 4px;
-    border-right: 0;
-  }
-
-  .strip {
-    flex-wrap: wrap;
-    padding-left: 4px;
-  }
-
+@media (max-width: 700px) {
   .lane {
-    grid-template-columns: minmax(90px, 1fr) 58px 30px;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    row-gap: 6px;
   }
 
   .miniRange {
-    grid-column: 1 / -1;
+    grid-column: span 3;
   }
 }
 

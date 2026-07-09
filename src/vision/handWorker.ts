@@ -33,10 +33,13 @@ self.addEventListener('message', (event: MessageEvent<WorkerInbound>) => {
 async function ensureLandmarker(): Promise<void> {
   if (landmarker) return;
   initializing ??= (async () => {
-    const fileset = await FilesetResolver.forVisionTasks('/mediapipe/wasm');
+    const origin = self.location.origin;
+    const wasmBaseUrl = new URL('/mediapipe/wasm', origin).toString();
+    const modelUrl = new URL('/mediapipe/hand_landmarker.task', origin).toString();
+    const fileset = await FilesetResolver.forVisionTasks(wasmBaseUrl);
     landmarker = await HandLandmarker.createFromOptions(fileset, {
       baseOptions: {
-        modelAssetPath: '/mediapipe/hand_landmarker.task',
+        modelAssetPath: modelUrl,
       },
       runningMode: 'VIDEO',
       numHands: 2,

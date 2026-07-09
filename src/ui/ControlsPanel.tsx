@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
-import { SCALE_ORDER, type ScaleName } from '../types';
+import {
+  SCALE_ORDER,
+  type HarmonyPresetName,
+  type ScaleName,
+} from '../types';
 import styles from './controls.module.css';
 
 const VALUE_HIDE_DELAY_MS = 800;
@@ -31,6 +35,17 @@ const SCALE_LABELS: Record<ScaleName, string> = {
   mixolydian: 'Mixolydian',
   chromatic: 'Chromatic',
 };
+
+const HARMONY_OPTIONS: ReadonlyArray<{
+  value: HarmonyPresetName;
+  label: string;
+}> = [
+  { value: 'off', label: 'Off' },
+  { value: 'triad', label: 'Triad' },
+  { value: 'duet', label: 'Duet' },
+  { value: 'choir', label: 'Choir' },
+  { value: 'octaves', label: 'Octaves' },
+];
 
 interface RangeControlProps {
   label: string;
@@ -113,6 +128,8 @@ export function ControlsPanel() {
   const wetLevel = useStore((state) => state.wetLevel);
   const bypass = useStore((state) => state.bypass);
   const latencyMs = useStore((state) => state.latencyMs);
+  const harmonyPreset = useStore((state) => state.harmonyPreset);
+  const harmonySpread = useStore((state) => state.harmonySpread);
   const set = useStore((state) => state.set);
 
   useEffect(() => {
@@ -127,110 +144,151 @@ export function ControlsPanel() {
 
   return (
     <div className={styles.panel}>
-      <div className={styles.groupHeading}>
-        <span>Tune</span>
-        <span className={styles.latency}>~{Math.round(latencyMs)} ms</span>
+      <div className={styles.groupRow}>
+        <div className={styles.groupHeading}>
+          <span>Tune</span>
+          <span className={styles.latency}>~{Math.round(latencyMs)} ms</span>
+        </div>
+
+        <div className={styles.controls}>
+          <label className={styles.selectControl}>
+            <span className={styles.controlLabel}>Key</span>
+            <select
+              value={key.tonicPc}
+              onChange={(event) => {
+                set({
+                  key: {
+                    ...key,
+                    tonicPc: Number(event.currentTarget.value),
+                  },
+                });
+              }}
+            >
+              {KEY_NAMES.map((name, index) => (
+                <option key={name} value={index}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={`${styles.selectControl} ${styles.scaleControl}`}>
+            <span className={styles.controlLabel}>Scale</span>
+            <select
+              value={key.scale}
+              onChange={(event) => {
+                set({
+                  key: {
+                    ...key,
+                    scale: event.currentTarget.value as ScaleName,
+                  },
+                });
+              }}
+            >
+              {SCALE_ORDER.map((scale) => (
+                <option key={scale} value={scale}>
+                  {SCALE_LABELS[scale]}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <RangeControl
+            label="Retune"
+            min={0}
+            max={400}
+            step={1}
+            value={retuneMs}
+            formatValue={(value) => (value === 0 ? 'snap' : `${value} ms`)}
+            onChange={(value) => set({ retuneMs: value })}
+          />
+          <RangeControl
+            label="Amount"
+            min={0}
+            max={1}
+            step={0.01}
+            value={correctionAmount}
+            formatValue={(value) => `${Math.round(value * 100)}%`}
+            onChange={(value) => set({ correctionAmount: value })}
+          />
+          <RangeControl
+            label="Pitch"
+            min={-24}
+            max={24}
+            step={1}
+            value={pitchShift}
+            formatValue={signedSemitones}
+            onChange={(value) => set({ pitchShift: value })}
+          />
+          <RangeControl
+            label="Formant"
+            min={-12}
+            max={12}
+            step={1}
+            value={formantShift}
+            formatValue={signedSemitones}
+            onChange={(value) => set({ formantShift: value })}
+          />
+          <RangeControl
+            label="Mix"
+            min={0}
+            max={1}
+            step={0.01}
+            value={wetLevel}
+            formatValue={(value) => `${Math.round(value * 100)}% wet`}
+            onChange={(value) => {
+              set({ wetLevel: value, dryLevel: 1 - value });
+            }}
+          />
+
+          <button
+            className={`${styles.bypass} ${bypass ? styles.bypassActive : ''}`}
+            type="button"
+            aria-pressed={bypass}
+            onClick={() => set({ bypass: !bypass })}
+          >
+            Bypass
+          </button>
+        </div>
       </div>
 
-      <div className={styles.controls}>
-        <label className={styles.selectControl}>
-          <span className={styles.controlLabel}>Key</span>
-          <select
-            value={key.tonicPc}
-            onChange={(event) => {
-              set({
-                key: {
-                  ...key,
-                  tonicPc: Number(event.currentTarget.value),
-                },
-              });
-            }}
-          >
-            {KEY_NAMES.map((name, index) => (
-              <option key={name} value={index}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className={`${styles.selectControl} ${styles.scaleControl}`}>
-          <span className={styles.controlLabel}>Scale</span>
-          <select
-            value={key.scale}
-            onChange={(event) => {
-              set({
-                key: {
-                  ...key,
-                  scale: event.currentTarget.value as ScaleName,
-                },
-              });
-            }}
-          >
-            {SCALE_ORDER.map((scale) => (
-              <option key={scale} value={scale}>
-                {SCALE_LABELS[scale]}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <RangeControl
-          label="Retune"
-          min={0}
-          max={400}
-          step={1}
-          value={retuneMs}
-          formatValue={(value) => (value === 0 ? 'snap' : `${value} ms`)}
-          onChange={(value) => set({ retuneMs: value })}
-        />
-        <RangeControl
-          label="Amount"
-          min={0}
-          max={1}
-          step={0.01}
-          value={correctionAmount}
-          formatValue={(value) => `${Math.round(value * 100)}%`}
-          onChange={(value) => set({ correctionAmount: value })}
-        />
-        <RangeControl
-          label="Pitch"
-          min={-24}
-          max={24}
-          step={1}
-          value={pitchShift}
-          formatValue={signedSemitones}
-          onChange={(value) => set({ pitchShift: value })}
-        />
-        <RangeControl
-          label="Formant"
-          min={-12}
-          max={12}
-          step={1}
-          value={formantShift}
-          formatValue={signedSemitones}
-          onChange={(value) => set({ formantShift: value })}
-        />
-        <RangeControl
-          label="Mix"
-          min={0}
-          max={1}
-          step={0.01}
-          value={wetLevel}
-          formatValue={(value) => `${Math.round(value * 100)}% wet`}
-          onChange={(value) => {
-            set({ wetLevel: value, dryLevel: 1 - value });
-          }}
-        />
-
-        <button
-          className={`${styles.bypass} ${bypass ? styles.bypassActive : ''}`}
-          type="button"
-          aria-pressed={bypass}
-          onClick={() => set({ bypass: !bypass })}
-        >
-          Bypass
-        </button>
+      <div className={`${styles.groupRow} ${styles.harmonyRow}`}>
+        <div className={styles.groupHeading}>
+          <span>Harmony</span>
+        </div>
+        <div className={styles.harmonyControls}>
+          <div className={styles.presetButtons} aria-label="Harmony preset">
+            {HARMONY_OPTIONS.map((option) => {
+              const active = harmonyPreset === option.value;
+              const suggested =
+                harmonyPreset === 'off' && option.value === 'triad';
+              return (
+                <button
+                  key={option.value}
+                  className={`${styles.presetButton} ${
+                    active ? styles.presetButtonActive : ''
+                  } ${suggested ? styles.presetButtonSuggested : ''}`}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => set({ harmonyPreset: option.value })}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className={styles.spreadControl}>
+            <RangeControl
+              label="Spread"
+              min={0}
+              max={1}
+              step={0.01}
+              value={harmonySpread}
+              formatValue={(value) => `${Math.round(value * 100)}%`}
+              onChange={(value) => set({ harmonySpread: value })}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

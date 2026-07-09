@@ -22,9 +22,17 @@ class GranularShifter implements Shifter {
   readonly latencySamples =
     BASE_DELAY_SAMPLES + Math.floor(GRAIN_SAMPLES / 2);
   private readonly ring = new Float32Array(RING_SAMPLES);
+  private readonly grainWindow = new Float32Array(GRAIN_SAMPLES);
   private writeIndex = 0;
   private grainPhase = 0.25;
   private transposeRatio = 1;
+
+  constructor() {
+    for (let index = 0; index < GRAIN_SAMPLES; index += 1) {
+      this.grainWindow[index] =
+        0.5 - 0.5 * Math.cos((TWO_PI * index) / GRAIN_SAMPLES);
+    }
+  }
 
   process(input: Float32Array, output: Float32Array): void {
     for (let index = 0; index < input.length; index += 1) {
@@ -34,7 +42,9 @@ class GranularShifter implements Shifter {
         output[index] = this.readDelayed(this.latencySamples);
       } else {
         const secondPhase = (this.grainPhase + 0.5) % 1;
-        const firstWindow = 0.5 - 0.5 * Math.cos(TWO_PI * this.grainPhase);
+        const windowIndex =
+          Math.floor(this.grainPhase * GRAIN_SAMPLES) % GRAIN_SAMPLES;
+        const firstWindow = this.grainWindow[windowIndex]!;
         const secondWindow = 1 - firstWindow;
         const firstDelay =
           BASE_DELAY_SAMPLES + this.grainPhase * GRAIN_SAMPLES;

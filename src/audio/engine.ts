@@ -1,5 +1,6 @@
 import workletUrl from './worklets/toad-processor.ts?worker&url';
 import { createParamsBus, P, type ParamsBus } from './paramsBus';
+import { HARMONY_PRESETS } from './theory/harmony';
 import { SCALE_ORDER } from '../types';
 import { useStore, type AppState } from '../state/store';
 
@@ -181,6 +182,7 @@ export class AudioEngine {
   }
 
   private syncStoreToBus(state: AppState): void {
+    const harmonyIntervals = HARMONY_PRESETS[state.harmonyPreset];
     this.bus.set(P.bypass, state.bypass ? 1 : 0);
     this.bus.set(P.retuneMs, state.retuneMs);
     this.bus.set(P.correctionAmount, state.correctionAmount);
@@ -188,11 +190,11 @@ export class AudioEngine {
     this.bus.set(P.scaleId, SCALE_ORDER.indexOf(state.key.scale));
     this.bus.set(P.formantShift, state.formantShift);
     this.bus.set(P.pitchShift, state.pitchShift);
-    this.bus.set(P.harmonyVoices, 0);
-    this.bus.set(P.harmonyInterval0, 0);
-    this.bus.set(P.harmonyInterval1, 0);
-    this.bus.set(P.harmonyInterval2, 0);
-    this.bus.set(P.harmonyInterval3, 0);
+    this.bus.set(P.harmonyVoices, harmonyIntervals.length);
+    this.bus.set(P.harmonyInterval0, harmonyIntervals[0] ?? 0);
+    this.bus.set(P.harmonyInterval1, harmonyIntervals[1] ?? 0);
+    this.bus.set(P.harmonyInterval2, harmonyIntervals[2] ?? 0);
+    this.bus.set(P.harmonyInterval3, harmonyIntervals[3] ?? 0);
     this.bus.set(P.harmonySpread, state.harmonySpread);
     this.bus.set(P.dryLevel, state.dryLevel);
     this.bus.set(P.wetLevel, state.wetLevel);

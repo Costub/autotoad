@@ -3,6 +3,7 @@ import { EnvelopeFollower } from '../dsp/envelope';
 import { PitchTracker } from '../dsp/pitchTracker';
 import { ShifterPool, type Shifter } from '../dsp/shifterPool';
 import { P, type ParamIndex } from '../paramsBus';
+import { resolveInterval } from '../theory/harmony';
 import { midiToFreq, snapToScale } from '../theory/scales';
 import { SCALE_ORDER, type KeyConfig } from '../../types';
 
@@ -26,6 +27,24 @@ const GAIN_RAMP_TAU_MS = 5; // ms
 const MIN_RAMP_SAMPLES = 64; // samples
 const LONG_UNVOICED_MS = 250; // ms
 const DEFAULT_BLOCK_SAMPLES = 128; // samples
+const HARMONY_VOICE_COUNT = 4;
+const MAX_DETUNE_CENTS = 12; // cents at maximum spread
+const DETUNE_SIGN = [1, -1, 0.5, -0.5] as const;
+const PAN_POSITION = [-0.6, 0.6, -0.3, 0.3] as const;
+const HARMONY_GAIN_SILENCE = 0.001;
+const HALF_PI = Math.PI / 2;
+const HARMONY_INTERVAL_PARAMS = [
+  P.harmonyInterval0,
+  P.harmonyInterval1,
+  P.harmonyInterval2,
+  P.harmonyInterval3,
+] as const;
+const HARMONY_NOTE_PARAMS = [
+  P.harmonyNote0,
+  P.harmonyNote1,
+  P.harmonyNote2,
+  P.harmonyNote3,
+] as const;
 
 interface ParamsMessage {
   type: 'params';
@@ -121,6 +140,23 @@ class ToadProcessor extends AudioWorkletProcessor {
   private readonly perfScratch = new Float64Array(PERF_WINDOW_BLOCKS);
   private readonly wetBlock = new Float32Array(DEFAULT_BLOCK_SAMPLES);
   private readonly dryBlock = new Float32Array(DEFAULT_BLOCK_SAMPLES);
+  private readonly harmonyBlocks = [
+    new Float32Array(DEFAULT_BLOCK_SAMPLES),
+    new Float32Array(DEFAULT_BLOCK_SAMPLES),
+    new Float32Array(DEFAULT_BLOCK_SAMPLES),
+    new Float32Array(DEFAULT_BLOCK_SAMPLES),
+  ] as const;
+  private readonly harmonyShifters: Array<Shifter | null> = [
+    null,
+    null,
+    null,
+    null,
+  ];
+  private readonly harmonyGains = new Float64Array(HARMONY_VOICE_COUNT);
+  private readonly harmonyTargets = new Float64Array(HARMONY_VOICE_COUNT);
+  private readonly harmonyPanLeft = new Float64Array(HARMONY_VOICE_COUNT);
+  private readonly harmonyPanRight = new Float64Array(HARMONY_VOICE_COUNT);
+  private readonly harmonyProcessing = new Uint8Array(HARMONY_VOICE_COUNT);
   private readonly key: KeyConfig = { tonicPc: 0, scale: 'major' };
   private pool: ShifterPool | null = null;
   private leadShifter: Shifter | null = null;
@@ -128,6 +164,7 @@ class ToadProcessor extends AudioWorkletProcessor {
   private dryWriteIndex = 0;
   private dryGain = 0;
   private wetGain = 0;
+  private headroomGain = 1;
   private unvoicedBlocks = 0;
   private shifterResetForSilence = false;
   private perfIndex = 0;
@@ -161,7 +198,13 @@ class ToadProcessor extends AudioWorkletProcessor {
         this.dryDelay &&
         input.length === DEFAULT_BLOCK_SAMPLES
       ) {
-        this.processCorrection(input, output, analysis.smoothedMidi, voiced);
+        this.processCorrection(
+          input,
+          output,
+          analysis.smoothedMidi,
+          voiced,
+          analysis.stableNote,
+        );
       } else {
         silenceOutput(output);
         this.bus.set(P.correctedFreq, 0);
@@ -184,6 +227,9 @@ class ToadProcessor extends AudioWorkletProcessor {
       new ArrayBuffer(0),
     );
     this.leadShifter = this.pool.get(0);
+    for (let index = 0; index < HARMONY_VOICE_COUNT; index += 1) {
+      this.harmonyShifters[index] = this.pool.get(index + 1);
+    }
     this.dryDelay = new Float32Array(
       this.pool.latencySamples + DEFAULT_BLOCK_SAMPLES * 2,
     );
@@ -199,6 +245,7 @@ class ToadProcessor extends AudioWorkletProcessor {
     output: Float32Array[] | undefined,
     smoothedMidi: number,
     voiced: boolean,
+    stableNote: number | null,
   ): void {
     const shifter = this.leadShifter!;
     const pool = this.pool!;
@@ -224,8 +271,9 @@ class ToadProcessor extends AudioWorkletProcessor {
     );
     const leadShift =
       this.bus.get(P.pitchShift) + correctionFrame.correctionSemitones;
+    const formantShift = this.bus.get(P.formantShift);
     shifter.setTranspose(leadShift);
-    shifter.setFormant(this.bus.get(P.formantShift));
+    shifter.setFormant(formantShift);
     shifter.process(input, this.wetBlock);
     this.processDryDelay(input, this.dryBlock, pool.latencySamples);
 
@@ -241,34 +289,172 @@ class ToadProcessor extends AudioWorkletProcessor {
         !this.shifterResetForSilence
       ) {
         shifter.reset();
+        for (let index = 0; index < HARMONY_VOICE_COUNT; index += 1) {
+          this.harmonyShifters[index]?.reset();
+          this.harmonyProcessing[index] = 0;
+        }
         this.shifterResetForSilence = true;
       }
     }
 
     const bypass = this.bus.get(P.bypass) >= 0.5;
+    const requestedHarmonyVoices = Math.max(
+      0,
+      Math.min(
+        HARMONY_VOICE_COUNT,
+        Math.round(this.bus.get(P.harmonyVoices)),
+      ),
+    );
+    const activeHarmonyVoices =
+      voiced && stableNote !== null ? requestedHarmonyVoices : 0;
+    const spread = Math.max(0, Math.min(1, this.bus.get(P.harmonySpread)));
+    this.prepareHarmonyVoices(
+      input,
+      stableNote,
+      activeHarmonyVoices,
+      leadShift,
+      formantShift,
+      spread,
+    );
+
     const targetDry = bypass ? 1 : this.bus.get(P.dryLevel);
     const targetWet = bypass ? 0 : voiced ? this.bus.get(P.wetLevel) : 0;
+    const targetHeadroom = 1 / Math.sqrt(1 + activeHarmonyVoices);
     const dryAlpha = gainAlpha(GAIN_RAMP_TAU_MS);
     const wetTauMs =
       targetWet < this.wetGain ? UNVOICED_RAMP_MS : GAIN_RAMP_TAU_MS;
     const wetAlpha = gainAlpha(wetTauMs);
+    const harmonyAttackAlpha = gainAlpha(GAIN_RAMP_TAU_MS);
+    const harmonyReleaseAlpha = gainAlpha(UNVOICED_RAMP_MS);
     const channelCount = output?.length ?? 0;
 
     for (let index = 0; index < input.length; index += 1) {
       this.dryGain += (targetDry - this.dryGain) * dryAlpha;
       this.wetGain += (targetWet - this.wetGain) * wetAlpha;
-      const mixed =
-        this.dryBlock[index]! * this.dryGain +
-        this.wetBlock[index]! * this.wetGain;
-      for (let channel = 0; channel < channelCount; channel += 1) {
-        output![channel]![index] = mixed;
+      this.headroomGain +=
+        (targetHeadroom - this.headroomGain) * dryAlpha;
+
+      let harmonyLeft = 0;
+      let harmonyRight = 0;
+      for (
+        let voiceIndex = 0;
+        voiceIndex < HARMONY_VOICE_COUNT;
+        voiceIndex += 1
+      ) {
+        const harmonyAlpha =
+          this.harmonyTargets[voiceIndex]! <
+          this.harmonyGains[voiceIndex]!
+            ? harmonyReleaseAlpha
+            : harmonyAttackAlpha;
+        const currentHarmonyGain = this.harmonyGains[voiceIndex]!;
+        this.harmonyGains[voiceIndex] =
+          currentHarmonyGain +
+          (this.harmonyTargets[voiceIndex]! - currentHarmonyGain) *
+            harmonyAlpha;
+        const harmonySample =
+          this.harmonyBlocks[voiceIndex]![index]! *
+          this.harmonyGains[voiceIndex]!;
+        harmonyLeft += harmonySample * this.harmonyPanLeft[voiceIndex]!;
+        harmonyRight += harmonySample * this.harmonyPanRight[voiceIndex]!;
+      }
+
+      const delayedDry = this.dryBlock[index]! * this.dryGain;
+      const leadWet = this.wetBlock[index]!;
+      const left =
+        delayedDry +
+        (leadWet + harmonyLeft) * this.headroomGain * this.wetGain;
+      const right =
+        delayedDry +
+        (leadWet + harmonyRight) * this.headroomGain * this.wetGain;
+      if (channelCount > 0) {
+        output![0]![index] = left;
+      }
+      if (channelCount > 1) {
+        output![1]![index] = right;
+      }
+      for (let channel = 2; channel < channelCount; channel += 1) {
+        output![channel]![index] = (left + right) * 0.5;
       }
     }
 
+    this.resetSilentHarmonyVoices();
     this.bus.set(
       P.correctedFreq,
       voiced ? midiToFreq(correctionFrame.appliedTarget) : 0,
     );
+  }
+
+  private prepareHarmonyVoices(
+    input: Float32Array,
+    stableNote: number | null,
+    activeVoiceCount: number,
+    leadShift: number,
+    formantShift: number,
+    spread: number,
+  ): void {
+    for (
+      let voiceIndex = 0;
+      voiceIndex < HARMONY_VOICE_COUNT;
+      voiceIndex += 1
+    ) {
+      const active = stableNote !== null && voiceIndex < activeVoiceCount;
+      this.harmonyTargets[voiceIndex] = active ? 1 : 0;
+
+      const panAngle =
+        (PAN_POSITION[voiceIndex]! * spread * 0.5 + 0.5) * HALF_PI;
+      this.harmonyPanLeft[voiceIndex] = Math.cos(panAngle);
+      this.harmonyPanRight[voiceIndex] = Math.sin(panAngle);
+
+      const shifter = this.harmonyShifters[voiceIndex]!;
+      if (active) {
+        const intervalSteps = Math.round(
+          this.bus.get(HARMONY_INTERVAL_PARAMS[voiceIndex]!),
+        );
+        const semitoneOffset = resolveInterval(
+          stableNote,
+          this.key,
+          intervalSteps,
+        );
+        const detuneSemitones =
+          (MAX_DETUNE_CENTS * DETUNE_SIGN[voiceIndex]! * spread) / 100;
+        shifter.setTranspose(
+          leadShift + semitoneOffset + detuneSemitones,
+        );
+        shifter.setFormant(formantShift);
+        shifter.process(input, this.harmonyBlocks[voiceIndex]!);
+        this.harmonyProcessing[voiceIndex] = 1;
+        this.bus.set(
+          HARMONY_NOTE_PARAMS[voiceIndex]!,
+          stableNote + semitoneOffset,
+        );
+      } else {
+        this.bus.set(HARMONY_NOTE_PARAMS[voiceIndex]!, -1);
+        if (this.harmonyGains[voiceIndex]! > HARMONY_GAIN_SILENCE) {
+          shifter.process(input, this.harmonyBlocks[voiceIndex]!);
+          this.harmonyProcessing[voiceIndex] = 1;
+        } else {
+          this.harmonyBlocks[voiceIndex]!.fill(0);
+        }
+      }
+    }
+  }
+
+  private resetSilentHarmonyVoices(): void {
+    for (
+      let voiceIndex = 0;
+      voiceIndex < HARMONY_VOICE_COUNT;
+      voiceIndex += 1
+    ) {
+      if (
+        this.harmonyTargets[voiceIndex] === 0 &&
+        this.harmonyGains[voiceIndex]! <= HARMONY_GAIN_SILENCE &&
+        this.harmonyProcessing[voiceIndex] === 1
+      ) {
+        this.harmonyShifters[voiceIndex]!.reset();
+        this.harmonyProcessing[voiceIndex] = 0;
+        this.harmonyBlocks[voiceIndex]!.fill(0);
+      }
+    }
   }
 
   private processDryDelay(

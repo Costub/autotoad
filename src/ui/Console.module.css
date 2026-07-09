@@ -37,7 +37,7 @@
 }
 
 .stage {
-  width: min(100%, calc((100vh - 232px) * 1.1111));
+  width: min(100%, calc((100vh - 312px) * 1.1111));
   aspect-ratio: 160 / 144;
   overflow: hidden;
   border: 1px solid var(--hairline);
@@ -47,7 +47,7 @@
 }
 
 .dock {
-  min-height: 110px;
+  min-height: 190px;
   display: flex;
   align-items: center;
   border-top: 1px solid var(--hairline);
@@ -63,7 +63,7 @@
   }
 
   .dock {
-    min-height: 110px;
+    min-height: 190px;
     padding-inline: 10px;
   }
 }

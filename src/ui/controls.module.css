@@ -1,6 +1,11 @@
 .panel {
   width: 100%;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.groupRow {
   display: grid;
   grid-template-columns: 66px minmax(0, 1fr);
   align-items: stretch;
@@ -164,16 +169,82 @@
   background: var(--accent);
 }
 
+.harmonyRow {
+  min-height: 70px;
+  border-top: 1px solid var(--hairline);
+}
+
+.harmonyControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-left: 14px;
+}
+
+.presetButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.presetButton {
+  min-width: 66px;
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    color 100ms var(--ease),
+    border-color 100ms var(--ease),
+    background-color 100ms var(--ease);
+}
+
+.presetButton:hover,
+.presetButton:focus-visible {
+  color: var(--text);
+  border-color: var(--accent);
+  outline: none;
+}
+
+.presetButtonActive {
+  color: var(--bg);
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.presetButtonSuggested {
+  border-color: var(--accent);
+}
+
+.spreadControl {
+  width: 150px;
+  padding-right: 4px;
+}
+
+.spreadControl .rangeControl {
+  height: 62px;
+}
+
 @media (max-width: 800px) {
   .controls {
     grid-template-columns: 52px 110px repeat(5, minmax(62px, 1fr)) 54px;
     gap: 7px;
   }
+
+  .presetButton {
+    min-width: 58px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .valueReadout,
-  .bypass {
+  .bypass,
+  .presetButton {
     transition-duration: 50ms;
   }
 }

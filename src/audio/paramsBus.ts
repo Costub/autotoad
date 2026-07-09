@@ -23,6 +23,10 @@ export const P = {
   smoothedMidi: 25,
   workletP95Us: 26,
   shifterLatencySamps: 27,
+  harmonyNote0: 28,
+  harmonyNote1: 29,
+  harmonyNote2: 30,
+  harmonyNote3: 31,
   LENGTH: 32,
 } as const;
 
@@ -160,6 +164,10 @@ function setInitialValues(values: Float64Array): void {
   values[P.wetLevel] = 1;
   values[P.inputGain] = 1;
   values[P.stableNote] = -1;
+  values[P.harmonyNote0] = -1;
+  values[P.harmonyNote1] = -1;
+  values[P.harmonyNote2] = -1;
+  values[P.harmonyNote3] = -1;
 }
 
 export function createParamsBus(): ParamsBus {

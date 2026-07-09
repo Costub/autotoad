@@ -23,6 +23,15 @@ const CENTER_HISTORY_FRAMES = 180;
 const CENTER_MEDIAN_INTERVAL_FRAMES = 30;
 const TRACE_POINTS = 256;
 const TRACE_X_STEP_PX = 2;
+const HARMONY_VOICE_COUNT = 4;
+const TADPOLE_FADE_TAU_SECONDS = 0.12;
+const TADPOLE_WIGGLE_PX = 2;
+const TADPOLE_NOTE_PARAMS = [
+  P.harmonyNote0,
+  P.harmonyNote1,
+  P.harmonyNote2,
+  P.harmonyNote3,
+] as const;
 
 interface RowVisual {
   root: Container;
@@ -53,6 +62,14 @@ export function createPitchScene(
   const trace = new Graphics();
   const ghostToad = placeholderSprites.toadGhost();
   const toad = placeholderSprites.toad();
+  const tadpoles = [
+    placeholderSprites.tadpole(),
+    placeholderSprites.tadpole(),
+    placeholderSprites.tadpole(),
+    placeholderSprites.tadpole(),
+  ] as const;
+  const tadpoleAlpha = new Float64Array(HARMONY_VOICE_COUNT);
+  const tadpoleY = new Float64Array(HARMONY_VOICE_COUNT);
   const traceY = new Float32Array(TRACE_POINTS);
   const traceVoiced = new Uint8Array(TRACE_POINTS);
   const centerHistory = new Float64Array(CENTER_HISTORY_FRAMES);
@@ -65,6 +82,10 @@ export function createPitchScene(
     world.addChild(row.root);
   }
   world.addChild(trace);
+  for (const tadpole of tadpoles) {
+    tadpole.visible = false;
+    world.addChild(tadpole);
+  }
   world.addChild(ghostToad);
   world.addChild(toad);
   app.stage.addChild(world);
@@ -157,6 +178,36 @@ export function createPitchScene(
       ghostToad.alpha = 0.35;
     } else {
       ghostToad.visible = false;
+    }
+
+    const tadpoleAlphaAmount =
+      1 - Math.exp(-deltaSeconds / TADPOLE_FADE_TAU_SECONDS);
+    for (
+      let voiceIndex = 0;
+      voiceIndex < HARMONY_VOICE_COUNT;
+      voiceIndex += 1
+    ) {
+      const harmonyNote = deps.readBus(TADPOLE_NOTE_PARAMS[voiceIndex]!);
+      const active = harmonyNote >= 0;
+      const currentTadpoleAlpha = tadpoleAlpha[voiceIndex]!;
+      tadpoleAlpha[voiceIndex] =
+        currentTadpoleAlpha +
+        ((active ? 1 : 0) - currentTadpoleAlpha) * tadpoleAlphaAmount;
+      if (active) {
+        tadpoleY[voiceIndex] = yForMidi(harmonyNote);
+      }
+
+      const tadpole = tadpoles[voiceIndex]!;
+      tadpole.visible = tadpoleAlpha[voiceIndex]! > 0.001;
+      tadpole.alpha = tadpoleAlpha[voiceIndex]!;
+      const wiggle = reducedMotion
+        ? 0
+        : Math.sin(app.ticker.lastTime * 0.003 + voiceIndex * 1.7) *
+          TADPOLE_WIGGLE_PX;
+      tadpole.position.set(
+        toadX - 24 - voiceIndex * 10 + wiggle,
+        tadpoleY[voiceIndex]!,
+      );
     }
 
     traceY[traceWriteIndex] = voiced ? yForMidi(smoothedMidi) : toadY;

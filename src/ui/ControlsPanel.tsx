@@ -71,6 +71,7 @@ interface RangeControlProps {
   max: number;
   step: number;
   value: number;
+  heldKey?: string;
   formatValue: (value: number) => string;
   onChange: (value: number) => void;
 }
@@ -81,10 +82,12 @@ function RangeControl({
   max,
   step,
   value,
+  heldKey,
   formatValue,
   onChange,
 }: RangeControlProps) {
   const [showValue, setShowValue] = useState(false);
+  const gestureHeld = useStore((state) => heldKey ? state.gestureHeld[heldKey] === true : false);
   const hideTimerRef = useRef<number | null>(null);
 
   useEffect(
@@ -107,7 +110,7 @@ function RangeControl({
   };
 
   return (
-    <label className={styles.rangeControl}>
+    <label className={`${styles.rangeControl} ${gestureHeld ? styles.gestureGlow : ''}`}>
       <span className={styles.controlLabel}>{label}</span>
       <input
         type="range"
@@ -321,6 +324,7 @@ export function ControlsPanel() {
             max={400}
             step={1}
             value={retuneMs}
+            heldKey="retuneMs"
             formatValue={(value) => (value === 0 ? 'snap' : `${value} ms`)}
             onChange={(value) => set({ retuneMs: value })}
           />
@@ -330,6 +334,7 @@ export function ControlsPanel() {
             max={1}
             step={0.01}
             value={correctionAmount}
+            heldKey="correctionAmount"
             formatValue={(value) => `${Math.round(value * 100)}%`}
             onChange={(value) => set({ correctionAmount: value })}
           />
@@ -339,6 +344,7 @@ export function ControlsPanel() {
             max={24}
             step={1}
             value={pitchShift}
+            heldKey="pitchShift"
             formatValue={signedSemitones}
             onChange={(value) => set({ pitchShift: value })}
           />
@@ -348,6 +354,7 @@ export function ControlsPanel() {
             max={12}
             step={1}
             value={formantShift}
+            heldKey="formantShift"
             formatValue={signedSemitones}
             onChange={(value) => set({ formantShift: value })}
           />
@@ -357,6 +364,7 @@ export function ControlsPanel() {
             max={1}
             step={0.01}
             value={wetLevel}
+            heldKey="wetLevel"
             formatValue={(value) => `${Math.round(value * 100)}% wet`}
             onChange={(value) => {
               set({ wetLevel: value, dryLevel: 1 - value });
@@ -406,6 +414,7 @@ export function ControlsPanel() {
               max={1}
               step={0.01}
               value={harmonySpread}
+              heldKey="harmonySpread"
               formatValue={(value) => `${Math.round(value * 100)}%`}
               onChange={(value) => set({ harmonySpread: value })}
             />
@@ -431,11 +440,11 @@ export function ControlsPanel() {
       <div className={`${styles.groupRow} ${styles.fxRow}`}>
         <div className={styles.groupHeading}><span>FX</span></div>
         <div className={styles.fxControls}>
-          <RangeControl label="Reverb" min={0} max={1} step={0.01} value={reverbSend} formatValue={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set({ reverbSend: v })} />
-          <RangeControl label="Decay" min={0.5} max={8} step={0.1} value={reverbDecay} formatValue={(v) => `${v.toFixed(1)} s`} onChange={(v) => set({ reverbDecay: v })} />
+          <RangeControl label="Reverb" min={0} max={1} step={0.01} value={reverbSend} heldKey="reverbSend" formatValue={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set({ reverbSend: v })} />
+          <RangeControl label="Decay" min={0.5} max={8} step={0.1} value={reverbDecay} heldKey="reverbDecay" formatValue={(v) => `${v.toFixed(1)} s`} onChange={(v) => set({ reverbDecay: v })} />
           <RangeControl label="Delay" min={0} max={1} step={0.01} value={delaySend} formatValue={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set({ delaySend: v })} />
           <Segment label="Delay division" options={DELAY_OPTIONS.map((value) => ({ value, label: value }))} value={delayTime} onChange={(value) => set({ delayTime: value })} />
-          <RangeControl label="Feedback" min={0} max={0.75} step={0.01} value={delayFeedback} formatValue={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set({ delayFeedback: v })} />
+          <RangeControl label="Feedback" min={0} max={0.75} step={0.01} value={delayFeedback} heldKey="delayFeedback" formatValue={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set({ delayFeedback: v })} />
           <button className={styles.toggle} type="button" onClick={() => engine.panic()}>Panic</button>
         </div>
       </div>

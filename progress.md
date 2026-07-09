@@ -4,7 +4,7 @@ Last updated: 2026-07-09
 
 ## Current status
 
-Phases 0–5 are implemented. Every phase is maintained as an individual
+Phases 0–6 are implemented. Every phase is maintained as an individual
 milestone commit.
 
 | Phase | Status | Commit |
@@ -14,8 +14,8 @@ milestone commit.
 | 2 — Autotune | Implemented with documented shifter fallback | `c763e00` |
 | 3 — Harmonizer | Complete; manual audio QA remains | `9edf7e3` |
 | 4 — Instruments + FX | Complete; manual audio QA remains | `7198f5b` |
-| 5 — Looper | Complete; manual loop/audio QA remains | this commit |
-| 6 — Hands + polish | Not started | — |
+| 5 — Looper | Complete; manual loop/audio QA remains | `36be127` |
+| 6 — Hands + polish | Complete; manual webcam/audio/deploy QA remains | this commit |
 
 ## What is implemented
 
@@ -142,6 +142,44 @@ milestone commit.
 - Pixi firefly row: one amber firefly per layer pulses at the loop boundary;
   muted layers dim; armed/recording shows a blinking amber slot.
 
+### Phase 6 — hands and polish
+
+- Same-origin MediaPipe asset pipeline:
+  - `scripts/copy-mediapipe.mjs` copies wasm files to `public/mediapipe/wasm`;
+  - `predev` and `prebuild` run the copy automatically;
+  - `public/mediapipe/README.md` documents the required hand model path;
+  - missing `hand_landmarker.task` fails soft with a friendly status.
+- Worker-based hand tracking path:
+  - main thread owns webcam permission and frame capture;
+  - worker owns `HandLandmarker` inference;
+  - frames are capped to 480px-wide camera constraints;
+  - a single in-flight frame flag drops frames under load.
+- Pure gesture math and mapper state machines:
+  - pinch hysteresis;
+  - relative grab-fader control;
+  - finger-slide deadzone;
+  - right-hand XY pad;
+  - flick instrument switching with refractory period;
+  - right-fist looper record toggle;
+  - both-fists panic;
+  - hand-entry guard before ambient height/pinch mappings.
+- Gesture mappings write only through store/engine choke points, never directly
+  to audio nodes or the ParamsBus.
+- rAF-smoothed gesture targets for live parameter motion.
+- Gesture HUD on the stage bottom edge with live held-parameter labels and XY
+  crosshair.
+- Mirrored camera thumbnail with landmark-dot canvas overlay and visibility
+  toggle.
+- Gesture-owned sliders glow green while held.
+- Performance mode toggle:
+  - hides the full dock and enlarges the stage;
+  - keeps HUD and a minimal loop/take/panic strip;
+  - `P` toggles performance mode.
+- Settings persistence in `localStorage` key `autotoad-settings-v1`, limited to
+  whitelisted musical/UI settings. Runtime state, telemetry, layers, input
+  source, errors, and take-recording state are not persisted.
+- Root `README.md` with run, verify, deploy, and MediaPipe model instructions.
+
 ## Automated verification
 
 Run:
@@ -153,10 +191,14 @@ npm.cmd run build
 
 Current result:
 
-- 6 test files passed.
-- 50 tests passed.
+- 7 test files passed.
+- 57 tests passed.
 - Strict TypeScript production build passed.
 - Production output contains a separately bundled AudioWorklet.
+- Production output contains a separately bundled vision worker.
+- `npm.cmd run preview -- --host 127.0.0.1 --port 4176` served
+  `Cross-Origin-Opener-Policy: same-origin` and
+  `Cross-Origin-Embedder-Policy: require-corp`.
 - No explicit `any` under `src/`.
 - No direct `.gain.value = ...` assignments.
 
@@ -173,6 +215,9 @@ The tests cover:
   mapping, and randomized note-on/note-off balance.
 - loop length, next-boundary quantization, and loop-buffer rotation for latency
   compensation.
+- gesture pinch hysteresis, relative grab mapping, finger-slide deadzone,
+  flick refractory behavior, fist-hold record toggle, hand-entry guard, and
+  fist-vs-pinch priority.
 
 ## How to test in Chrome
 
@@ -256,6 +301,34 @@ the microphone/AudioWorklet permission path.
 10. Watch the stage top row: fireflies should pulse together on loop boundaries,
     muted layers should dim, and the armed/recording slot should blink amber.
 
+### Phase 6 gestures and polish test
+
+1. Run `npm.cmd run copy:mediapipe`. Confirm wasm assets exist under
+   `public/mediapipe/wasm`.
+2. For gesture QA, place `hand_landmarker.task` at
+   `public/mediapipe/hand_landmarker.task`. Without it, the app should still
+   start and show **Hand tracking model missing — see public/mediapipe/README**.
+3. Start the app and allow microphone access. Webcam denial should leave all
+   audio/UI features functional and show **Gestures off — webcam unavailable**.
+4. Toggle **Cam** and verify the mirrored thumbnail appears with landmark dots
+   when the model/camera are available.
+5. Right pinch-and-drag vertically: Retune should move relatively with no jump
+   on grab; the Retune slider should glow green and the HUD should show the
+   held value.
+6. Left pinch-and-drag vertically: Formant should move relatively.
+7. Right open-hand horizontal slide: Delay division should step through the
+   four divisions after the deadzone. Left open-hand slide should move Reverb
+   Decay.
+8. Toggle **XY**. Right index movement should drive Delay Feedback on x and
+   Reverb on y with the HUD crosshair active.
+9. Right-hand flick left/right should switch instrument presets once per flick.
+10. Right fist held about 300 ms should toggle loop record; both fists held
+    about 500 ms should trigger Panic.
+11. Press **Perf** or `P`. The dock should hide, stage should enlarge, HUD
+    should remain, and the minimal loop/take/panic strip should stay usable.
+12. Change settings, reload, and verify persisted settings return while loop
+    layers, input source, take-recording state, and runtime errors do not.
+
 ### Telemetry verification
 
 In Chrome DevTools Console:
@@ -321,6 +394,8 @@ The agent cannot hear the output. These remain manual:
   whether the default latency compensation needs a manual sample offset on the
   target machine;
 - long-run loop drift checks over 5 minutes;
+- webcam gesture feel, lighting robustness, handedness, and HUD/thumbnail
+  behavior with the actual MediaPipe model installed;
 - audio glitches under five-voice load;
 - perceived formant quality.
 
@@ -330,6 +405,8 @@ The agent cannot hear the output. These remain manual:
 - Confirm `workletP95Us ≤ 1500` with four harmony voices active.
 - Confirm `workletP95Us ≤ 1500` while worklet capture is recording a loop.
 - Confirm the stage remains near 60 fps during five-voice operation.
+- Confirm vision worker stays near 30 fps without increasing audio worklet p95
+  while singing, gesturing, and playing three loop layers.
 
 The granular implementation is optimized with lookup windows, inactive-voice
 skipping, and post-ramp reset, but the real device measurement is authoritative.
@@ -343,6 +420,8 @@ skipping, and post-ramp reset, but the real device measurement is authoritative.
   not be interactively inspected by the agent.
 - Phase 5 automated math/build verification passed, but audible loop alignment
   and drift verification still require desktop Chrome with speakers/headphones.
+- Phase 6 automated mapper/build verification passed. Live gesture verification
+  requires the hand model file plus desktop Chrome webcam permission.
 - Chrome remains the authoritative manual environment for the provided test
   procedure.
 
@@ -350,8 +429,12 @@ skipping, and post-ramp reset, but the real device measurement is authoritative.
 
 - Toad, ghost, lilypads, tadpoles, ripples, and fireflies are placeholder Pixi
   graphics, not final sprite art.
-- MediaPipe hand tracking, gesture controls, persistence, performance mode, and
-  deployment polish are Phase 6 and are not implemented.
+- The MediaPipe wasm files are vendored, but `hand_landmarker.task` could not be
+  downloaded in this restricted environment. Add it at
+  `public/mediapipe/hand_landmarker.task` to enable live hand tracking.
+- Production deployment has not been pushed through Vercel from this
+  environment; `README.md` documents the deploy command and required
+  COOP/COEP checks.
 - Safari support remains deferred by the project specification.
 
 ## Engineering decisions

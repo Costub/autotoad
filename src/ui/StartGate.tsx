@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { engine } from '../audio/engine';
 import { useStore } from '../state/store';
+import { startVision, warmupVisionAssets } from '../vision/gestureMapper';
 import styles from './StartGate.module.css';
 
 const GATE_FADE_MS = 200;
@@ -33,6 +34,7 @@ export function StartGate() {
     });
     setStep('engine');
     setProgress(0.52);
+    const visionWarmup = warmupVisionAssets();
 
     try {
       await engine.start({ skipMic: demo }, (stage) => {
@@ -43,6 +45,9 @@ export function StartGate() {
           setProgress(0.86);
         }
       });
+      setStep('vision');
+      setProgress(0.94);
+      void visionWarmup.then(() => startVision());
       setStep(demo ? 'demo ready' : 'microphone');
       setProgress(1);
       await wait(COMPLETE_HOLD_MS);

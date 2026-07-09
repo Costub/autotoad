@@ -56,12 +56,47 @@ export interface AppState {
   loopLengthSamples: number;
   looperLatencyOffsetSamples: number;
 
+  performanceMode: boolean;
+  camThumbVisible: boolean;
+  xyPadMode: boolean;
+  gesturesEnabled: boolean;
+  gestureStatus: string;
+  gestureHeld: Record<string, boolean>;
+
   latencyMs: number;
 
   set: (partial: Partial<AppState>) => void;
 }
 
-export const useStore = create<AppState>((set) => ({
+type PersistedSettings = Pick<AppState,
+  | 'key'
+  | 'retuneMs'
+  | 'correctionAmount'
+  | 'pitchShift'
+  | 'formantShift'
+  | 'dryLevel'
+  | 'wetLevel'
+  | 'harmonyPreset'
+  | 'harmonySpread'
+  | 'engineMode'
+  | 'instrument'
+  | 'legato'
+  | 'chordFollow'
+  | 'reverbSend'
+  | 'reverbDecay'
+  | 'delaySend'
+  | 'delayTime'
+  | 'delayFeedback'
+  | 'bpm'
+  | 'bars'
+  | 'metronomeOn'
+  | 'camThumbVisible'
+  | 'xyPadMode'
+>;
+
+const STORAGE_KEY = 'autotoad-settings-v1';
+
+const defaultState = {
   started: false,
   micReady: false,
   error: null,
@@ -94,6 +129,79 @@ export const useStore = create<AppState>((set) => ({
   looperEpochSamples: 0,
   loopLengthSamples: 0,
   looperLatencyOffsetSamples: 0,
+  performanceMode: false,
+  camThumbVisible: true,
+  xyPadMode: false,
+  gesturesEnabled: false,
+  gestureStatus: 'Gestures off',
+  gestureHeld: {},
   latencyMs: 0,
+} satisfies Omit<AppState, 'set'>;
+
+export const useStore = create<AppState>((set) => ({
+  ...defaultState,
+  ...loadPersistedSettings(),
+  inputSource: 'mic',
+  started: false,
+  error: null,
+  looperLayers: [],
+  looperState: 'idle',
   set: (partial) => set(partial),
 }));
+
+let persistTimer: number | null = null;
+
+useStore.subscribe((state) => {
+  if (typeof localStorage === 'undefined') return;
+  if (persistTimer !== null) globalThis.clearTimeout(persistTimer);
+  persistTimer = globalThis.setTimeout(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(selectPersistedSettings(state)));
+  }, 300);
+});
+
+function loadPersistedSettings(): Partial<PersistedSettings> {
+  if (typeof localStorage === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    return sanitizePersisted(JSON.parse(raw) as Partial<PersistedSettings>);
+  } catch {
+    return {};
+  }
+}
+
+function selectPersistedSettings(state: AppState): PersistedSettings {
+  return {
+    key: state.key,
+    retuneMs: state.retuneMs,
+    correctionAmount: state.correctionAmount,
+    pitchShift: state.pitchShift,
+    formantShift: state.formantShift,
+    dryLevel: state.dryLevel,
+    wetLevel: state.wetLevel,
+    harmonyPreset: state.harmonyPreset,
+    harmonySpread: state.harmonySpread,
+    engineMode: state.engineMode,
+    instrument: state.instrument,
+    legato: state.legato,
+    chordFollow: state.chordFollow,
+    reverbSend: state.reverbSend,
+    reverbDecay: state.reverbDecay,
+    delaySend: state.delaySend,
+    delayTime: state.delayTime,
+    delayFeedback: state.delayFeedback,
+    bpm: state.bpm,
+    bars: state.bars,
+    metronomeOn: state.metronomeOn,
+    camThumbVisible: state.camThumbVisible,
+    xyPadMode: state.xyPadMode,
+  };
+}
+
+function sanitizePersisted(value: Partial<PersistedSettings>): Partial<PersistedSettings> {
+  return {
+    ...value,
+    bpm: value.bpm ? Math.min(180, Math.max(60, value.bpm)) : undefined,
+    bars: value.bars && [1, 2, 4, 8].includes(value.bars) ? value.bars : undefined,
+  };
+}

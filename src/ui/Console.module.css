@@ -13,6 +13,12 @@
   border-bottom: 1px solid var(--hairline);
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .wordmark {
   margin: 0;
   color: var(--text);
@@ -28,6 +34,39 @@
   letter-spacing: 0.04em;
 }
 
+.headerButton,
+.perfStrip button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    color 100ms var(--ease),
+    border-color 100ms var(--ease),
+    background-color 150ms var(--ease),
+    opacity 150ms var(--ease);
+}
+
+.headerButton:hover,
+.headerButton:focus-visible,
+.perfStrip button:hover,
+.perfStrip button:focus-visible {
+  color: var(--text);
+  border-color: var(--accent);
+  outline: none;
+}
+
+.headerButtonActive {
+  color: var(--bg);
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
 .stageFrame {
   min-height: 0;
   flex: 1;
@@ -39,6 +78,7 @@
 .stage {
   width: min(100%, max(220px, calc((100vh - 455px) * 1.1111)));
   aspect-ratio: 160 / 144;
+  position: relative;
   overflow: hidden;
   border: 1px solid var(--hairline);
   border-radius: 12px;
@@ -50,6 +90,48 @@
   min-height: 334px;
   display: flex;
   align-items: center;
+  border-top: 1px solid var(--hairline);
+  opacity: 1;
+  transition: opacity 150ms var(--ease);
+}
+
+.perfStrip {
+  display: none;
+}
+
+.performanceMode {
+  width: min(100%, 1120px);
+}
+
+.performanceMode .wordmarkBar {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.performanceMode .stageFrame {
+  padding-block: 8px;
+}
+
+.performanceMode .stage {
+  width: min(100%, calc(100vh * 1.1));
+}
+
+.performanceMode .dock {
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.performanceMode .perfStrip {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
   border-top: 1px solid var(--hairline);
 }
 
@@ -65,5 +147,13 @@
   .dock {
     min-height: 334px;
     padding-inline: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock,
+  .headerButton,
+  .perfStrip button {
+    transition-duration: 50ms;
   }
 }

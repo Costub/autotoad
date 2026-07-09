@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 0 — Project Scaffold
+Phase 1 — Tuner Toad
 
 ## Completed
 
@@ -23,9 +23,41 @@ Phase 0 — Project Scaffold
 
 Complete.
 
+## Phase 1 completed
+
+- Added a fixed-layout `ParamsBus` with SharedArrayBuffer and message fallbacks.
+- Added the RMS/envelope follower and pitch tracker with octave-glitch rejection,
+  MIDI-space median filtering, one-pole smoothing, and note hysteresis.
+- Added the silent analysis-only `ToadProcessor` AudioWorklet with telemetry,
+  ready handshake, and rolling process-time p95 measurement.
+- Added the single-context `AudioEngine` with raw microphone constraints,
+  store-to-bus synchronization, and friendly failure messages.
+- Added the headphones StartGate and progress-line startup flow.
+- Added the PixiJS pitch stage with scale-aware lilypad rows, submerged/voiced
+  toad states, scrolling pitch trace, slow recentering, and reduced-motion mode.
+- Added key and scale selectors to the controls dock.
+- Added smoothing and ParamsBus layout tests; 13/13 tests pass.
+- Production build emits the self-contained AudioWorklet bundle successfully.
+- Added the documented Vite dev-mode AudioWorklet URL fallback and a bounded
+  module-load timeout so startup cannot remain stuck indefinitely.
+
+## Phase 1 status
+
+Complete.
+
+Runtime notes:
+
+- Startup gate layout, progress state, overflow, and console health were verified
+  in the in-app browser.
+- The in-app browser cannot complete this microphone/AudioWorklet path; it stalls
+  at browser permission despite the page remaining error-free.
+- The user confirmed microphone permission and successful runtime operation in
+  Chrome, the primary supported browser.
+- COOP/COEP response headers remain correct (`same-origin` / `require-corp`).
+
 ## Next
 
-- Begin Phase 1 — Tuner Toad — in the next implementation session.
+- Begin Phase 2 — Autotune — in the next implementation session.
 
 ## Decisions and notes
 
@@ -34,3 +66,5 @@ Complete.
 - No audio, microphone, Pixi scene, or vision behavior is included in Phase 0.
 - The in-app browser's read-only evaluator does not expose isolation globals;
   the required HTTP headers were verified directly from the dev server response.
+- `P` is a runtime `as const` object rather than a `const enum` so Vite can share
+  the exact layout across the main bundle, worklet bundle, and runtime tests.

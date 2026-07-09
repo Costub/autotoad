@@ -180,6 +180,25 @@ milestone commit.
   source, errors, and take-recording state are not persisted.
 - Root `README.md` with run, verify, deploy, and MediaPipe model instructions.
 
+### Post-phase polish fixes
+
+- Gesture worker loading now uses Vite-managed, package-exported MediaPipe
+  module-WASM asset URLs instead of importing from `/public` or forcing the
+  classic loader. This addresses the **Gestures off — ModuleFactory not set**
+  runtime path seen after the earlier public-asset workaround.
+- Main console layout widened to a 1280px deck. With camera off, the pitch
+  stage owns the full top deck; with **Cam** on, the stage and camera pane split
+  the top area 50/50.
+- Camera view is now a full pane with a higher-resolution canvas, not an
+  overlay thumbnail competing with the HUD.
+- Control rows were reworked with a wider section-label column and responsive
+  wrapping grids so **Instrument**, engine-mode buttons, FX controls, and
+  Panic/Delay controls do not overlap.
+- Pixi visuals now use constructed sprite graphics for the toad, ghost,
+  tadpoles, lilypads, ripples, and fireflies instead of square placeholders.
+- The stage now has a soft glowing pitch trail, drifting/tilting leaf pads,
+  bobbing toad motion, and glow-backed note/croak bubbles.
+
 ## Automated verification
 
 Run:
@@ -191,8 +210,8 @@ npm.cmd run build
 
 Current result:
 
-- 7 test files passed.
-- 57 tests passed.
+- 8 test files passed.
+- 62 tests passed.
 - Strict TypeScript production build passed.
 - Production output contains a separately bundled AudioWorklet.
 - Production output contains a separately bundled vision worker.
@@ -436,13 +455,19 @@ skipping, and post-ramp reset, but the real device measurement is authoritative.
   and drift verification still require desktop Chrome with speakers/headphones.
 - Phase 6 automated mapper/build verification passed. Live gesture verification
   requires the hand model file plus desktop Chrome webcam permission.
+- The latest layout/MediaPipe polish builds and tests successfully. The Codex
+  in-app browser automation API did not expose the open local tab during this
+  pass, so final visual/webcam confirmation should still be done in desktop
+  Chrome.
 - Chrome remains the authoritative manual environment for the provided test
   procedure.
 
 ### Visual assets and future phases
 
-- Toad, ghost, lilypads, tadpoles, ripples, and fireflies are placeholder Pixi
-  graphics, not final sprite art.
+- Toad, ghost, lilypads, tadpoles, ripples, and fireflies are now styled Pixi
+  vector sprites. They are still code-generated art rather than imported bitmap
+  sprite sheets, which keeps the build self-contained but is not final hand
+  illustration.
 - The MediaPipe wasm files are vendored, but `hand_landmarker.task` could not be
   downloaded in this restricted environment. Add it at
   `public/mediapipe/hand_landmarker.task` to enable live hand tracking.

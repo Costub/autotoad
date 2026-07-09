@@ -7,7 +7,7 @@
 
 .groupRow {
   display: grid;
-  grid-template-columns: 66px minmax(0, 1fr);
+  grid-template-columns: 112px minmax(0, 1fr);
   align-items: stretch;
 }
 
@@ -16,7 +16,7 @@
   flex-direction: column;
   justify-content: center;
   gap: 8px;
-  padding-right: 12px;
+  padding: 0 14px 0 2px;
   border-right: 1px solid var(--hairline);
   color: var(--text);
   font-size: 13px;
@@ -36,9 +36,9 @@
 .controls {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(58px, 0.7fr) minmax(118px, 1.2fr) repeat(5, minmax(76px, 1fr)) minmax(64px, 0.7fr);
+  grid-template-columns: repeat(auto-fit, minmax(106px, 1fr));
   align-items: center;
-  gap: 10px;
+  gap: 10px 12px;
   padding: 0 6px 0 14px;
 }
 
@@ -52,7 +52,7 @@
 .selectControl,
 .rangeControl {
   min-width: 0;
-  height: 76px;
+  min-height: 72px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -159,6 +159,7 @@
 }
 
 .bypass {
+  align-self: center;
   min-height: 30px;
   padding: 0 7px;
   border: 1px solid var(--hairline);
@@ -204,13 +205,13 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 10px 12px;
   padding: 8px 4px 8px 14px;
 }
 
 .fxControls {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
 }
 
 .fxControls .rangeControl {
@@ -220,6 +221,7 @@
 .segment {
   display: flex;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .segment button,
@@ -228,6 +230,7 @@
 .take {
   min-height: 30px;
   padding: 0 9px;
+  border-radius: 3px;
   border: 1px solid var(--hairline);
   color: var(--muted);
   background: transparent;
@@ -246,6 +249,15 @@
 
 .segment button + button {
   border-left: 0;
+}
+
+.segment button {
+  white-space: nowrap;
+}
+
+.toggle,
+.take {
+  white-space: nowrap;
 }
 
 .segment button:hover,
@@ -317,7 +329,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 20px;
-  padding-left: 14px;
+  padding: 8px 4px 8px 14px;
 }
 
 .presetButtons {
@@ -397,6 +409,16 @@
   .strip,
   .fxControls {
     padding-left: 4px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .controls {
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  }
+
+  .fxControls {
+    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
   }
 }
 

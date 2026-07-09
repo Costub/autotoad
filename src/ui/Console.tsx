@@ -19,6 +19,7 @@ export function Console() {
   const metronomeOn = useStore((state) => state.metronomeOn);
   const set = useStore((state) => state.set);
   const [helpOpen, setHelpOpen] = useState(false);
+  const cameraSplitVisible = started && camThumbVisible;
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -77,10 +78,20 @@ export function Console() {
         </header>
 
         <section className={styles.stageFrame} aria-label="Pitch stage">
-          <div className={styles.stage}>
-            <PitchStage />
-            {started ? <GestureHud /> : null}
-            {started && camThumbVisible ? <CamThumb /> : null}
+          <div
+            className={`${styles.stageDeck} ${
+              cameraSplitVisible ? styles.stageDeckSplit : ''
+            }`}
+          >
+            <div className={styles.stage}>
+              <PitchStage />
+              {started ? <GestureHud /> : null}
+            </div>
+            {cameraSplitVisible ? (
+              <aside className={styles.cameraPane} aria-label="Gesture camera">
+                <CamThumb variant="pane" />
+              </aside>
+            ) : null}
           </div>
         </section>
 

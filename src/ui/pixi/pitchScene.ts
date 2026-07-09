@@ -81,6 +81,7 @@ export function createPitchScene(
   const rowHeight = height / ROW_DIVISOR;
   const world = new Container();
   const rows = createRows(width);
+  const traceGlow = new Graphics();
   const trace = new Graphics();
   const bubbles: BubbleVisual[] = Array.from({ length: BUBBLE_COUNT }, () => ({
     graphic: new Graphics(),
@@ -114,6 +115,7 @@ export function createPitchScene(
   for (const row of rows) {
     world.addChild(row.root);
   }
+  world.addChild(traceGlow);
   world.addChild(trace);
   for (const bubble of bubbles) {
     bubble.graphic.visible = false;
@@ -209,8 +211,12 @@ export function createPitchScene(
     }
 
     const squashFrame = hopFramesRemaining === 2;
+    const toadBob = reducedMotion
+      ? 0
+      : Math.sin(app.ticker.lastTime * 0.006) * (voiced ? 1.8 : 0.7);
     toad.scale.y = squashFrame ? 0.65 : 1;
-    toad.position.set(toadX, toadY + (squashFrame ? 4 : 0));
+    toad.position.set(toadX, toadY + (squashFrame ? 4 : 0) + toadBob);
+    toad.rotation = reducedMotion ? 0 : Math.sin(app.ticker.lastTime * 0.004) * 0.045;
     toad.alpha = toadAlpha;
     if (hopFramesRemaining > 0) {
       hopFramesRemaining -= 1;
@@ -246,6 +252,8 @@ export function createPitchScene(
         bubble.popping -= 1;
       } else {
         bubble.graphic
+          .circle(0, 0, radius * 1.45)
+          .fill({ color: 0x5dcb6a, alpha: Math.max(0, 0.12 - bubble.age * 0.035) })
           .circle(0, 0, radius)
           .stroke({ width: 2, color: 0x5dcb6a, alpha: Math.max(0, 0.75 - bubble.age * 0.25) });
       }
@@ -309,6 +317,15 @@ export function createPitchScene(
     traceVoiced[traceWriteIndex] = voiced ? 1 : 0;
     traceWriteIndex = (traceWriteIndex + 1) % TRACE_POINTS;
     traceCount = Math.min(TRACE_POINTS, traceCount + 1);
+    drawTrace(
+      traceGlow,
+      traceY,
+      traceVoiced,
+      traceWriteIndex,
+      traceCount,
+      toadX,
+      true,
+    );
     drawTrace(
       trace,
       traceY,
@@ -401,6 +418,8 @@ function updateRows(
         -LILYPAD_SPACING_PX / 2 +
         lilypadIndex * LILYPAD_SPACING_PX -
         driftPx;
+      lilypad.y = Math.sin((driftPx + lilypadIndex * 29 + rowIndex * 17) * 0.04) * 1.4;
+      lilypad.rotation = Math.sin((driftPx + lilypadIndex * 19) * 0.025) * 0.04;
     }
   }
 }
@@ -432,6 +451,7 @@ function drawTrace(
   writeIndex: number,
   count: number,
   toadX: number,
+  glow = false,
 ): void {
   trace.clear();
   let drawing = false;
@@ -450,7 +470,9 @@ function drawTrace(
       trace.lineTo(x, y);
     }
   }
-  trace.stroke({ width: 2, color: 0x8fa6a3, alpha: 0.65 });
+  trace.stroke(glow
+    ? { width: 10, color: 0x5dcb6a, alpha: 0.16 }
+    : { width: 2, color: 0xbdf0a5, alpha: 0.72 });
 }
 
 function updateFireflies(

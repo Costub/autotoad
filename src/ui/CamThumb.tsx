@@ -5,10 +5,14 @@ import {
 } from '../vision/gestureMapper';
 import styles from './CamThumb.module.css';
 
-const WIDTH = 120;
-const HEIGHT = 90;
+const WIDTH = 320;
+const HEIGHT = 240;
 
-export function CamThumb() {
+interface CamThumbProps {
+  variant?: 'thumb' | 'pane';
+}
+
+export function CamThumb({ variant = 'thumb' }: CamThumbProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState(gestureRuntime.status);
 
@@ -43,7 +47,10 @@ export function CamThumb() {
   }, []);
 
   return (
-    <div className={styles.thumb} aria-label="Gesture camera thumbnail">
+    <div
+      className={`${styles.thumb} ${variant === 'pane' ? styles.pane : ''}`}
+      aria-label={variant === 'pane' ? 'Gesture camera' : 'Gesture camera thumbnail'}
+    >
       <canvas ref={canvasRef} className={styles.canvas} width={WIDTH} height={HEIGHT} />
       {gestureRuntime.video ? null : <div className={styles.status}>{status}</div>}
     </div>

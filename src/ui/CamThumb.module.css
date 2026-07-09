@@ -12,10 +12,26 @@
   opacity: 0.82;
 }
 
+.pane {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  inset: auto;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 20% 15%, rgb(93 203 106 / 18%), transparent 30%),
+    linear-gradient(135deg, rgb(21 37 40 / 95%), rgb(8 16 18 / 94%));
+  opacity: 1;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 3%),
+    0 18px 52px rgb(0 0 0 / 18%);
+}
+
 .canvas {
   width: 100%;
   height: 100%;
   display: block;
+  object-fit: cover;
 }
 
 .status {

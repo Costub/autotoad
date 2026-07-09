@@ -1,6 +1,6 @@
 .console {
-  width: min(100%, 960px);
-  max-height: calc(100vh - 20px);
+  width: min(100%, 1280px);
+  max-height: calc(100vh - 16px);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -77,23 +77,49 @@
   flex: 1;
   display: grid;
   place-items: center;
-  padding: 28px clamp(16px, 4vw, 40px);
+  padding: 18px clamp(12px, 3vw, 32px);
+}
+
+.stageDeck {
+  width: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 14px;
+}
+
+.stageDeckSplit {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .stage {
-  width: min(100%, max(220px, calc((100vh - 455px) * 1.1111)));
+  width: 100%;
+  min-height: 260px;
+  max-height: min(54vh, 620px);
   aspect-ratio: 160 / 144;
   position: relative;
   overflow: hidden;
   border: 1px solid var(--hairline);
   border-radius: 12px;
-  background: var(--panel);
-  box-shadow: 0 18px 52px rgb(0 0 0 / 18%);
+  background:
+    radial-gradient(circle at 70% 18%, rgb(242 178 76 / 12%), transparent 28%),
+    linear-gradient(180deg, rgb(21 37 40 / 94%), rgb(10 20 22 / 96%));
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 3%),
+    0 18px 52px rgb(0 0 0 / 18%);
+}
+
+.cameraPane {
+  min-width: 0;
+  min-height: 260px;
+  max-height: min(54vh, 620px);
+  aspect-ratio: 160 / 144;
 }
 
 .dock {
   min-height: 0;
-  max-height: min(46vh, 430px);
+  max-height: min(48vh, 455px);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -110,7 +136,7 @@
 }
 
 .performanceMode {
-  width: min(100%, 1120px);
+  width: min(100%, 1320px);
 }
 
 .performanceMode .wordmarkBar {
@@ -125,7 +151,11 @@
 }
 
 .performanceMode .stage {
-  width: min(100%, calc(100vh * 1.1));
+  max-height: calc(100vh - 72px);
+}
+
+.performanceMode .cameraPane {
+  max-height: calc(100vh - 72px);
 }
 
 .performanceMode .dock {
@@ -155,6 +185,15 @@
 
   .stageFrame {
     padding-inline: 12px;
+  }
+
+  .stageDeckSplit {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stage,
+  .cameraPane {
+    min-height: 220px;
   }
 
   .dock {

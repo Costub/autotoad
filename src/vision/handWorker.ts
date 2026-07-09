@@ -1,8 +1,9 @@
 import {
-  FilesetResolver,
   HandLandmarker,
   type NormalizedLandmark,
 } from '@mediapipe/tasks-vision';
+import visionWasmBinaryUrl from '@mediapipe/tasks-vision/vision_wasm_module_internal.wasm?url';
+import visionWasmLoaderUrl from '@mediapipe/tasks-vision/vision_wasm_module_internal.js?url';
 import { computeHandFrame, type LandmarkPoint } from './gestureMath';
 import type { GestureFrame } from '../types';
 
@@ -34,9 +35,7 @@ async function ensureLandmarker(): Promise<void> {
   if (landmarker) return;
   initializing ??= (async () => {
     const origin = self.location.origin;
-    const wasmBaseUrl = new URL('/mediapipe/wasm', origin).toString();
     const modelUrl = new URL('/mediapipe/hand_landmarker.task', origin).toString();
-    const fileset = await FilesetResolver.forVisionTasks(wasmBaseUrl, false);
     landmarker = await HandLandmarker.createFromOptions(fileset, {
       baseOptions: {
         modelAssetPath: modelUrl,
@@ -48,6 +47,11 @@ async function ensureLandmarker(): Promise<void> {
   })();
   await initializing;
 }
+
+const fileset = {
+  wasmLoaderPath: visionWasmLoaderUrl,
+  wasmBinaryPath: visionWasmBinaryUrl,
+};
 
 async function handleFrame(message: FrameMessage): Promise<void> {
   try {

@@ -21,6 +21,7 @@ export type EngineMode = 'effect' | 'instrument' | 'both';
 export type InstrumentName = 'chiptune' | 'fmBass' | 'pluck' | 'choirPad';
 export type HarmonyPresetName = 'off' | 'duet' | 'triad' | 'choir' | 'octaves';
 export type DelayDivision = '8n' | '8n.' | '4n' | '2n';
+export type InputSourceName = 'mic' | 'demo' | 'file';
 
 export interface NoteEvent {
   type: 'noteOn' | 'noteOff' | 'pitchBend';

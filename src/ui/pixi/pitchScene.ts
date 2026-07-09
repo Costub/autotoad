@@ -9,6 +9,7 @@ import { degreeOf, freqToMidiFloat } from '../../audio/theory/scales';
 import { P } from '../../audio/paramsBus';
 import type { KeyConfig } from '../../types';
 import { placeholderSprites } from './sprites';
+import { drainBubbleEvents } from './bubbleEvents';
 
 const VISIBLE_ROWS = 25;
 const ROW_DIVISOR = 26;
@@ -26,6 +27,7 @@ const TRACE_X_STEP_PX = 2;
 const HARMONY_VOICE_COUNT = 4;
 const TADPOLE_FADE_TAU_SECONDS = 0.12;
 const TADPOLE_WIGGLE_PX = 2;
+const BUBBLE_COUNT = 8;
 const TADPOLE_NOTE_PARAMS = [
   P.harmonyNote0,
   P.harmonyNote1,
@@ -37,6 +39,14 @@ interface RowVisual {
   root: Container;
   lilypads: Container[];
   ripple: Container;
+}
+
+interface BubbleVisual {
+  graphic: Graphics;
+  midi: number;
+  velocity: number;
+  age: number;
+  popping: number;
 }
 
 export interface PitchSceneDeps {
@@ -60,6 +70,13 @@ export function createPitchScene(
   const world = new Container();
   const rows = createRows(width);
   const trace = new Graphics();
+  const bubbles: BubbleVisual[] = Array.from({ length: BUBBLE_COUNT }, () => ({
+    graphic: new Graphics(),
+    midi: -1,
+    velocity: 0,
+    age: -1,
+    popping: 0,
+  }));
   const ghostToad = placeholderSprites.toadGhost();
   const toad = placeholderSprites.toad();
   const tadpoles = [
@@ -82,6 +99,10 @@ export function createPitchScene(
     world.addChild(row.root);
   }
   world.addChild(trace);
+  for (const bubble of bubbles) {
+    bubble.graphic.visible = false;
+    world.addChild(bubble.graphic);
+  }
   for (const tadpole of tadpoles) {
     tadpole.visible = false;
     world.addChild(tadpole);
@@ -170,6 +191,50 @@ export function createPitchScene(
     toad.alpha = toadAlpha;
     if (hopFramesRemaining > 0) {
       hopFramesRemaining -= 1;
+    }
+
+    for (const event of drainBubbleEvents()) {
+      if (event.type === 'off') {
+        const bubble = bubbles.find((candidate) => candidate.age >= 0 && candidate.midi === event.midi);
+        if (bubble) {
+          bubble.popping = 1;
+          bubble.velocity = 0;
+        }
+        continue;
+      }
+      const bubble = bubbles.find((candidate) => candidate.age < 0) ??
+        bubbles.reduce((oldest, candidate) => candidate.age > oldest.age ? candidate : oldest);
+      bubble.midi = event.midi;
+      bubble.velocity = event.velocity;
+      bubble.age = 0;
+      bubble.popping = 0;
+      bubble.graphic.position.set(toadX + 7, toadY - 4);
+    }
+    for (const bubble of bubbles) {
+      if (bubble.age < 0) continue;
+      bubble.age += deltaSeconds;
+      bubble.graphic.clear();
+      const radius = 8 + (bubble.velocity / 127) * 12;
+      const wasPopping = bubble.popping > 0;
+      if (wasPopping) {
+        bubble.graphic
+          .star(0, 0, 6, radius * 1.35, radius * 0.35)
+          .stroke({ width: 2, color: 0x5dcb6a, alpha: 0.9 });
+        bubble.popping -= 1;
+      } else {
+        bubble.graphic
+          .circle(0, 0, radius)
+          .stroke({ width: 2, color: 0x5dcb6a, alpha: Math.max(0, 0.75 - bubble.age * 0.25) });
+      }
+      bubble.graphic.visible = true;
+      if (!reducedMotion) {
+        bubble.graphic.x -= deltaSeconds * 15;
+        bubble.graphic.y -= deltaSeconds * 28;
+      }
+      if (!wasPopping && (bubble.age > 3 || bubble.velocity === 0)) {
+        bubble.graphic.visible = false;
+        bubble.age = -1;
+      }
     }
 
     if (voiced && correctedFreq > 0) {

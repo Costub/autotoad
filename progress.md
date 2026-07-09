@@ -4,7 +4,7 @@ Last updated: 2026-07-09
 
 ## Current status
 
-Phases 0–3 are implemented. Every phase is maintained as an individual
+Phases 0–4 are implemented. Every phase is maintained as an individual
 milestone commit.
 
 | Phase | Status | Commit |
@@ -12,8 +12,8 @@ milestone commit.
 | 0 — Scaffold | Complete | `22e972f` |
 | 1 — Tuner Toad | Complete | `335b50e` |
 | 2 — Autotune | Implemented with documented shifter fallback | `c763e00` |
-| 3 — Harmonizer | Complete; manual audio QA remains | this commit |
-| 4 — Instruments + FX | Not started | — |
+| 3 — Harmonizer | Complete; manual audio QA remains | `9edf7e3` |
+| 4 — Instruments + FX | Complete; manual audio QA remains | this commit |
 | 5 — Looper | Not started | — |
 | 6 — Hands + polish | Not started | — |
 
@@ -89,6 +89,26 @@ milestone commit.
 - Granular window lookup tables so five voices do not calculate cosine windows
   for every output sample.
 
+### Phase 4 — instruments, FX, and deterministic test harness
+
+- Switchable Mic, generated Demo, and local audio File inputs; file audio is
+  decoded and downmixed to mono before entering the existing worklet chain.
+- Cached deterministic eight-note, deliberately detuned demo melody.
+- Direct-telemetry input level meter and microphone-denied demo startup.
+- Master-output Take recorder with elapsed time and `.webm` download.
+- 60–180 BPM control and quarter-note metronome with first-beat accent.
+- One shared raw/Tone audio context, master gain, and safety limiter.
+- Tested voice-to-MIDI segmentation with onset/off holds, hysteresis,
+  re-attacks, velocity, legato note changes, and forced all-off.
+- Effect, Instrument, and Both modes.
+- Chiptune, FM Bass, Pluck, and Choir Pad Tone.js presets.
+- Optional legato and diatonic chord-follow behavior.
+- Global reverb send with debounced dual-IR A/B crossfade.
+- Tempo-synced feedback delay with filtered output and 75% feedback clamp.
+- Ramped FX, metronome, and mode changes through engine choke points.
+- Full panic behavior for bypassing voice and releasing active synth notes.
+- Note-on croak bubbles with pooled Pixi graphics and note-off pops.
+
 ## Automated verification
 
 Run:
@@ -100,8 +120,8 @@ npm.cmd run build
 
 Current result:
 
-- 4 test files passed.
-- 37 tests passed.
+- 5 test files passed.
+- 44 tests passed.
 - Strict TypeScript production build passed.
 - Production output contains a separately bundled AudioWorklet.
 - No explicit `any` under `src/`.
@@ -116,6 +136,8 @@ The tests cover:
 - full-scale positive/negative octave-wrap properties;
 - chromatic and pentatonic harmony behavior;
 - ParamsBus layout uniqueness.
+- voice-to-MIDI onset/release timing, note changes, re-attacks, velocity
+  mapping, and randomized note-on/note-off balance.
 
 ## How to test in Chrome
 
@@ -156,6 +178,26 @@ the microphone/AudioWorklet permission path.
 - Spread=1 should sound wider and slightly detuned.
 - Harmony appearance/disappearance should fade without clicks.
 - Tadpoles should occupy the active harmony rows.
+
+### Phase 4 test harness, instruments, and FX
+
+1. Select **Demo**, Key=C, Scale=Major, Mix=100%, Amount=100%, Retune=0.
+   Compare Bypass on/off; the deliberate detuning should disappear when active.
+2. Select Harmony=Triad and Both mode. Choose each instrument preset; the
+   generated melody should drive distinct notes while voice harmonies remain.
+3. Enable Chord follow; each synth note should gain the selected diatonic
+   harmony. Toggle Legato and compare note transitions.
+4. Switch Mic → Demo → File and back. File opens an audio picker and loops the
+   decoded local file through the complete processing chain.
+5. Move Reverb/Decay and Delay/Feedback controls. Change delay division and
+   BPM; the delay timing should follow tempo without clicks.
+6. Toggle Click and step BPM. The first beat of each four-beat bar is higher.
+7. Press **Take**, let the demo play, then press it again. Confirm the
+   downloaded `.webm` plays the complete master mix.
+8. Press **Panic** or Esc during a synth note. Voice bypasses and every synth
+   note must release; the Take recorder intentionally continues.
+9. Deny microphone permission after a fresh reload and use **Start with demo
+   input instead**; the app should remain fully explorable.
 
 ### Telemetry verification
 
@@ -216,6 +258,8 @@ The agent cannot hear the output. These remain manual:
 - click detection at note and voiced/unvoiced transitions;
 - 50/50 dry/wet phase coherence by ear;
 - harmony musical balance and stereo width;
+- instrument preset balance, reverb/delay feel, and metronome level;
+- take playback and source-switch click checks;
 - audio glitches under five-voice load;
 - perceived formant quality.
 
@@ -232,9 +276,9 @@ skipping, and post-ramp reset, but the real device measurement is authoritative.
 
 - Phase 1 startup-gate layout was inspected in the Codex in-app browser.
 - That embedded browser could not complete the microphone/AudioWorklet path.
-- During the Phase 3 smoke pass the in-app browser session was no longer
-  discoverable, so the new control layout could not be interactively inspected
-  by the agent.
+- During the Phase 4 smoke pass the in-app browser backend was available but
+  exposed no open tab, so the new control layout and audio interactions could
+  not be interactively inspected by the agent.
 - Chrome remains the authoritative manual environment for the provided test
   procedure.
 
@@ -242,7 +286,6 @@ skipping, and post-ramp reset, but the real device measurement is authoritative.
 
 - Toad, ghost, lilypads, tadpoles, ripples, and fireflies are placeholder Pixi
   graphics, not final sprite art.
-- Voice-to-MIDI instruments and global FX are Phase 4 and are not implemented.
 - Quantized recording/overdub looper is Phase 5 and is not implemented.
 - MediaPipe hand tracking, gesture controls, persistence, performance mode, and
   deployment polish are Phase 6 and are not implemented.

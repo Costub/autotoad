@@ -20,7 +20,7 @@ export function StartGate() {
   const [progress, setProgress] = useState(0);
   const [step, setStep] = useState('ready');
 
-  const start = async (): Promise<void> => {
+  const start = async (demo = false): Promise<void> => {
     if (loading) {
       return;
     }
@@ -35,7 +35,7 @@ export function StartGate() {
     setProgress(0.52);
 
     try {
-      await engine.start((stage) => {
+      await engine.start({ skipMic: demo }, (stage) => {
         setStep(stage);
         if (stage === 'microphone') {
           setProgress(0.7);
@@ -43,12 +43,12 @@ export function StartGate() {
           setProgress(0.86);
         }
       });
-      setStep('microphone');
+      setStep(demo ? 'demo ready' : 'microphone');
       setProgress(1);
       await wait(COMPLETE_HOLD_MS);
       setDismissing(true);
       await wait(GATE_FADE_MS);
-      set({ started: true, micReady: true });
+      set({ started: true, micReady: !demo });
     } catch {
       setLoading(false);
       setProgress(0);
@@ -74,14 +74,22 @@ export function StartGate() {
 
         {error ? (
           <div className={styles.error} role="alert">
-            {error}
+            <p>{error}</p>
+            <button
+              className={styles.startButton}
+              type="button"
+              onClick={() => void start(true)}
+              disabled={loading}
+            >
+              {loading ? 'Loading demo…' : 'Start with demo input instead'}
+            </button>
           </div>
         ) : (
           <div className={styles.action}>
             <button
               className={styles.startButton}
               type="button"
-              onClick={() => void start()}
+              onClick={() => void start(false)}
               disabled={loading}
             >
               {loading ? 'Waking the toad…' : "I'm wearing headphones — start"}

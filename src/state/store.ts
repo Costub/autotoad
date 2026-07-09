@@ -5,12 +5,15 @@ import type {
   HarmonyPresetName,
   InstrumentName,
   KeyConfig,
+  InputSourceName,
 } from '../types';
 
 export interface AppState {
   started: boolean;
   micReady: boolean;
   error: string | null;
+  inputSource: InputSourceName;
+  isRecordingTake: boolean;
 
   key: KeyConfig;
   retuneMs: number;
@@ -48,6 +51,8 @@ export const useStore = create<AppState>((set) => ({
   started: false,
   micReady: false,
   error: null,
+  inputSource: 'mic',
+  isRecordingTake: false,
   key: { tonicPc: 0, scale: 'major' },
   retuneMs: 80,
   correctionAmount: 1,

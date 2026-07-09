@@ -119,6 +119,10 @@
   line-height: 1.6;
 }
 
+.error p {
+  margin: 0 0 14px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gate,
   .progressFill {

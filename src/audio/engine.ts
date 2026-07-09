@@ -5,10 +5,18 @@ import { useStore, type AppState } from '../state/store';
 
 const WORKLET_READY_TIMEOUT_MS = 3000;
 const WORKLET_LOAD_TIMEOUT_MS = 3000;
+const PITCH_WINDOW_SAMPLES = 2048; // samples
 
 interface ReadyMessage {
   type: 'ready';
 }
+
+interface ShiftersReadyMessage {
+  type: 'shifters-ready';
+  latencySamples: number;
+}
+
+export type EngineStartStage = 'engine' | 'microphone' | 'warming up';
 
 function isReadyMessage(value: unknown): value is ReadyMessage {
   return (
@@ -16,6 +24,17 @@ function isReadyMessage(value: unknown): value is ReadyMessage {
     value !== null &&
     'type' in value &&
     value.type === 'ready'
+  );
+}
+
+function isShiftersReadyMessage(value: unknown): value is ShiftersReadyMessage {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'type' in value &&
+    value.type === 'shifters-ready' &&
+    'latencySamples' in value &&
+    typeof value.latencySamples === 'number'
   );
 }
 
@@ -27,7 +46,7 @@ export class AudioEngine {
   private source: MediaStreamAudioSourceNode | null = null;
   private unsubscribeStore: (() => void) | null = null;
 
-  async start(): Promise<void> {
+  async start(onStage?: (stage: EngineStartStage) => void): Promise<void> {
     if (this.ctx && this.ctx.state !== 'closed') {
       return;
     }
@@ -38,6 +57,7 @@ export class AudioEngine {
       this.ctx = new AudioContext({ latencyHint: 'interactive' });
       await this.ctx.resume();
       this.bus = createParamsBus();
+      onStage?.('engine');
 
       try {
         const workletModuleUrl = import.meta.env.DEV
@@ -52,6 +72,7 @@ export class AudioEngine {
         throw new Error('worklet-load');
       }
 
+      onStage?.('microphone');
       try {
         this.stream = await navigator.mediaDevices.getUserMedia({
           audio: {
@@ -66,6 +87,7 @@ export class AudioEngine {
         throw new Error('microphone-denied');
       }
 
+      onStage?.('warming up');
       this.node = new AudioWorkletNode(this.ctx, 'toad-processor', {
         numberOfInputs: 1,
         numberOfOutputs: 1,
@@ -75,15 +97,30 @@ export class AudioEngine {
       if (this.bus.mode === 'message') {
         this.bus.attachPort(this.node.port);
       }
-      await this.waitForWorkletReady(this.node.port);
+      const shifterLatencySamples = await this.waitForWorkletReady(
+        this.node.port,
+      );
 
+      this.syncStoreToBus(useStore.getState());
       this.source = this.ctx.createMediaStreamSource(this.stream);
       this.source.connect(this.node);
       this.node.connect(this.ctx.destination);
 
-      this.syncStoreToBus(useStore.getState());
       this.unsubscribeStore = useStore.subscribe((state) => {
         this.syncStoreToBus(state);
+      });
+      const browserLatencySeconds =
+        this.ctx.baseLatency + (this.ctx.outputLatency ?? 0);
+      const shifterLatencySeconds =
+        shifterLatencySamples / this.ctx.sampleRate;
+      const detectionWindowSeconds =
+        PITCH_WINDOW_SAMPLES / 2 / this.ctx.sampleRate;
+      useStore.getState().set({
+        latencyMs:
+          (browserLatencySeconds +
+            shifterLatencySeconds +
+            detectionWindowSeconds) *
+          1000,
       });
     } catch (cause) {
       const message =
@@ -111,20 +148,31 @@ export class AudioEngine {
     this.ctx = null;
   }
 
-  private waitForWorkletReady(port: MessagePort): Promise<void> {
+  private waitForWorkletReady(port: MessagePort): Promise<number> {
     return new Promise((resolve, reject) => {
+      let processorReady = false;
+      let shiftersReady = false;
+      let latencySamples = 0;
       const timeoutId = globalThis.setTimeout(() => {
         port.removeEventListener('message', handleMessage);
         reject(new Error('worklet-ready-timeout'));
       }, WORKLET_READY_TIMEOUT_MS);
 
       const handleMessage = (event: MessageEvent<unknown>): void => {
-        if (!isReadyMessage(event.data)) {
+        if (isReadyMessage(event.data)) {
+          processorReady = true;
+        } else if (isShiftersReadyMessage(event.data)) {
+          shiftersReady = true;
+          latencySamples = event.data.latencySamples;
+        } else {
+          return;
+        }
+        if (!processorReady || !shiftersReady) {
           return;
         }
         globalThis.clearTimeout(timeoutId);
         port.removeEventListener('message', handleMessage);
-        resolve();
+        resolve(latencySamples);
       };
 
       port.addEventListener('message', handleMessage);

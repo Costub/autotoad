@@ -5,7 +5,7 @@ import {
   TextureStyle,
   type Ticker,
 } from 'pixi.js';
-import { degreeOf } from '../../audio/theory/scales';
+import { degreeOf, freqToMidiFloat } from '../../audio/theory/scales';
 import { P } from '../../audio/paramsBus';
 import type { KeyConfig } from '../../types';
 import { placeholderSprites } from './sprites';
@@ -51,6 +51,7 @@ export function createPitchScene(
   const world = new Container();
   const rows = createRows(width);
   const trace = new Graphics();
+  const ghostToad = placeholderSprites.toadGhost();
   const toad = placeholderSprites.toad();
   const traceY = new Float32Array(TRACE_POINTS);
   const traceVoiced = new Uint8Array(TRACE_POINTS);
@@ -64,6 +65,7 @@ export function createPitchScene(
     world.addChild(row.root);
   }
   world.addChild(trace);
+  world.addChild(ghostToad);
   world.addChild(toad);
   app.stage.addChild(world);
 
@@ -76,6 +78,8 @@ export function createPitchScene(
   let traceWriteIndex = 0;
   let traceCount = 0;
   let toadAlpha = 0.25;
+  let lastStableNote = -1;
+  let hopFramesRemaining = 0;
 
   const yForMidi = (midi: number): number =>
     height / 2 - (midi - centerMidi) * rowHeight;
@@ -83,7 +87,10 @@ export function createPitchScene(
   const update = (ticker: Ticker): void => {
     const deltaSeconds = Math.min(ticker.deltaMS / 1000, 0.05);
     const detectedFreq = deps.readBus(P.detectedFreq);
+    const correctedFreq = deps.readBus(P.correctedFreq);
     const smoothedMidi = deps.readBus(P.smoothedMidi);
+    const stableNote = deps.readBus(P.stableNote);
+    const hardRetune = deps.readBus(P.retuneMs) <= 1;
     const voiced = detectedFreq > 0 && smoothedMidi > 0;
 
     if (voiced) {
@@ -123,8 +130,34 @@ export function createPitchScene(
     const alphaAmount =
       1 - Math.exp(-deltaSeconds / TOAD_ALPHA_TAU_SECONDS);
     toadAlpha += (targetAlpha - toadAlpha) * alphaAmount;
-    toad.position.set(toadX, toadY);
+    if (
+      voiced &&
+      hardRetune &&
+      stableNote >= 0 &&
+      lastStableNote >= 0 &&
+      stableNote !== lastStableNote
+    ) {
+      hopFramesRemaining = 2;
+    }
+    if (stableNote >= 0) {
+      lastStableNote = stableNote;
+    }
+
+    const squashFrame = hopFramesRemaining === 2;
+    toad.scale.y = squashFrame ? 0.65 : 1;
+    toad.position.set(toadX, toadY + (squashFrame ? 4 : 0));
     toad.alpha = toadAlpha;
+    if (hopFramesRemaining > 0) {
+      hopFramesRemaining -= 1;
+    }
+
+    if (voiced && correctedFreq > 0) {
+      ghostToad.visible = true;
+      ghostToad.position.set(toadX, yForMidi(freqToMidiFloat(correctedFreq)));
+      ghostToad.alpha = 0.35;
+    } else {
+      ghostToad.visible = false;
+    }
 
     traceY[traceWriteIndex] = voiced ? yForMidi(smoothedMidi) : toadY;
     traceVoiced[traceWriteIndex] = voiced ? 1 : 0;

@@ -1,0 +1,179 @@
+.panel {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 66px minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.groupHeading {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding-right: 12px;
+  border-right: 1px solid var(--hairline);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.latency {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.controls {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 58px 126px repeat(5, minmax(72px, 1fr)) 58px;
+  align-items: center;
+  gap: 10px;
+  padding-left: 14px;
+}
+
+.controlLabel {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.selectControl,
+.rangeControl {
+  min-width: 0;
+  height: 76px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+
+.selectControl select {
+  width: 100%;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  color: var(--text);
+  background: var(--panel);
+  font: inherit;
+  font-size: 13px;
+}
+
+.selectControl select:hover,
+.selectControl select:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.rangeControl input {
+  width: 100%;
+  height: 12px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.rangeControl input::-webkit-slider-runnable-track {
+  height: 1px;
+  background: var(--hairline);
+}
+
+.rangeControl input::-webkit-slider-thumb {
+  width: 10px;
+  height: 10px;
+  margin-top: -4.5px;
+  appearance: none;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+  transition: background-color 100ms var(--ease);
+}
+
+.rangeControl input:active::-webkit-slider-thumb,
+.rangeControl input:focus-visible::-webkit-slider-thumb {
+  background: var(--accent);
+}
+
+.rangeControl input::-moz-range-track {
+  height: 1px;
+  background: var(--hairline);
+}
+
+.rangeControl input::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+}
+
+.rangeControl input:focus-visible {
+  outline: none;
+}
+
+.valueReadout {
+  position: absolute;
+  right: 0;
+  top: 8px;
+  color: var(--accent);
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms var(--ease);
+}
+
+.valueReadoutVisible {
+  opacity: 1;
+}
+
+.bypass {
+  min-height: 30px;
+  padding: 0 7px;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    border-color 100ms var(--ease),
+    color 100ms var(--ease),
+    background-color 100ms var(--ease);
+}
+
+.bypass:hover,
+.bypass:focus-visible {
+  border-color: var(--accent);
+  color: var(--text);
+  outline: none;
+}
+
+.bypassActive {
+  border-color: var(--accent);
+  color: var(--bg);
+  background: var(--accent);
+}
+
+@media (max-width: 800px) {
+  .controls {
+    grid-template-columns: 52px 110px repeat(5, minmax(62px, 1fr)) 54px;
+    gap: 7px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .valueReadout,
+  .bypass {
+    transition-duration: 50ms;
+  }
+}

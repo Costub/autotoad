@@ -35,7 +35,14 @@ export function StartGate() {
     setProgress(0.52);
 
     try {
-      await engine.start();
+      await engine.start((stage) => {
+        setStep(stage);
+        if (stage === 'microphone') {
+          setProgress(0.7);
+        } else if (stage === 'warming up') {
+          setProgress(0.86);
+        }
+      });
       setStep('microphone');
       setProgress(1);
       await wait(COMPLETE_HOLD_MS);

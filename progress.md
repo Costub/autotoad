@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 1 — Tuner Toad
+Phase 2 — Autotune
 
 ## Completed
 
@@ -55,10 +55,6 @@ Runtime notes:
   Chrome, the primary supported browser.
 - COOP/COEP response headers remain correct (`same-origin` / `require-corp`).
 
-## Next
-
-- Begin Phase 2 — Autotune — in the next implementation session.
-
 ## Decisions and notes
 
 - The phase work orders are authoritative and are being implemented in order.
@@ -68,3 +64,35 @@ Runtime notes:
   the required HTTP headers were verified directly from the dev server response.
 - `P` is a runtime `as const` object rather than a `const enum` so Vite can share
   the exact layout across the main bundle, worklet bundle, and runtime tests.
+
+## Phase 2 completed
+
+- Added testable MIDI-space correction target smoothing with hard-snap,
+  correction amount, retune-time, unvoiced freeze, and key-change continuity.
+- Added a five-voice `ShifterPool` seam and a low-latency granular shifter
+  fallback for the lead voice.
+- Added audible worklet output with scale correction, global pitch shift,
+  latency-matched dry mixing, click-free gain ramps, and long-silence reset.
+- Added shifter-ready startup handshaking and end-to-end latency calculation.
+- Replaced the temporary dock with the Tune controls panel: key, scale, retune,
+  amount, pitch, formant, mix, bypass, transient values, and Esc safety bypass.
+- Added the corrected-pitch ghost toad and hard-retune hop animation.
+- Added correction tests; 18/18 total tests pass.
+
+## Phase 2 in progress
+
+- Chrome runtime and audio-quality verification.
+
+## Next
+
+- Reload the running Chrome tab and verify audible correction, mix coherence,
+  bypass ramping, displayed latency, and worklet p95.
+- Commit and push Phase 2 after runtime acceptance.
+
+## Phase 2 dependency note
+
+- `signalsmith-stretch@1.3.2` is an official AudioWorkletNode wrapper, not a
+  block-level WASM API that can be instantiated inside `ToadProcessor`.
+- Following the documented fallback, Phase 2 currently uses a granular shifter.
+  Pitch shifting is active, but independent formant shift/preservation is not;
+  the adapter logs one warning when a non-zero formant value is requested.

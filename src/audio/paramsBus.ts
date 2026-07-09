@@ -150,7 +150,7 @@ class MessageParamsBus implements ParamsBus {
 }
 
 function setInitialValues(values: Float64Array): void {
-  values[P.bypass] = 1;
+  values[P.bypass] = 0;
   values[P.retuneMs] = 80;
   values[P.correctionAmount] = 1;
   values[P.keyTonic] = 0;

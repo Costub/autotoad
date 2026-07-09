@@ -19,7 +19,11 @@ const PITCH_WINDOW_SAMPLES = 2048;
 const DELAY_DIVISIONS = ['8n', '8n.', '4n', '2n'] as const;
 
 interface ReadyMessage { type: 'ready' }
-interface ShiftersReadyMessage { type: 'shifters-ready'; latencySamples: number }
+interface ShiftersReadyMessage {
+  type: 'shifters-ready';
+  latencySamples: number;
+  kind?: string;
+}
 export interface EngineStartOptions { skipMic?: boolean }
 export type EngineStartStage = 'engine' | 'microphone' | 'warming up';
 
@@ -35,6 +39,8 @@ export class AudioEngine {
   ctx: AudioContext | null = null;
   bus: ParamsBus = createParamsBus();
   node: AudioWorkletNode | null = null;
+  /** Which pitch-shift engine the worklet loaded ('signalsmith' | 'granular'). */
+  shifterKind = 'unknown';
   private stream: MediaStream | null = null;
   private micSource: MediaStreamAudioSourceNode | null = null;
   private bufferSource: AudioBufferSourceNode | null = null;
@@ -422,6 +428,8 @@ export class AudioEngine {
         else if (isShiftersReadyMessage(event.data)) {
           shiftersReady = true;
           latency = event.data.latencySamples;
+          this.shifterKind = event.data.kind ?? 'unknown';
+          console.info(`AUTOTOAD shifter engine: ${this.shifterKind}`);
         } else return;
         if (processorReady && shiftersReady) {
           globalThis.clearTimeout(timeout);

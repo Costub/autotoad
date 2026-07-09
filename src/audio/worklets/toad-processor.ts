@@ -337,6 +337,7 @@ class ToadProcessor extends AudioWorkletProcessor {
     this.port.postMessage({
       type: 'shifters-ready',
       latencySamples: this.pool.latencySamples,
+      kind: this.pool.kind,
     });
   }
 
@@ -372,8 +373,12 @@ class ToadProcessor extends AudioWorkletProcessor {
     const leadShift =
       this.bus.get(P.pitchShift) + correctionFrame.correctionSemitones;
     const formantShift = this.bus.get(P.formantShift);
+    // Tracked fundamental improves the shifter's formant analysis; 0 lets it
+    // auto-detect during unvoiced stretches.
+    const formantBaseHz = voiced ? midiToFreq(smoothedMidi) : 0;
     shifter.setTranspose(leadShift);
     shifter.setFormant(formantShift);
+    shifter.setFormantBaseHz(formantBaseHz);
     shifter.process(input, this.wetBlock);
     this.processDryDelay(input, this.dryBlock, pool.latencySamples);
 
@@ -414,6 +419,7 @@ class ToadProcessor extends AudioWorkletProcessor {
       activeHarmonyVoices,
       leadShift,
       formantShift,
+      formantBaseHz,
       spread,
     );
 
@@ -490,6 +496,7 @@ class ToadProcessor extends AudioWorkletProcessor {
     activeVoiceCount: number,
     leadShift: number,
     formantShift: number,
+    formantBaseHz: number,
     spread: number,
   ): void {
     for (
@@ -521,6 +528,7 @@ class ToadProcessor extends AudioWorkletProcessor {
           leadShift + semitoneOffset + detuneSemitones,
         );
         shifter.setFormant(formantShift);
+        shifter.setFormantBaseHz(formantBaseHz);
         shifter.process(input, this.harmonyBlocks[voiceIndex]!);
         this.harmonyProcessing[voiceIndex] = 1;
         this.bus.set(

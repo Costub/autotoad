@@ -363,22 +363,34 @@ Expected production isolation: `crossOriginIsolated === true` and
 
 ## Known limitations and things not completed
 
-### Signalsmith/formant limitation
+### Signalsmith/formant limitation — RESOLVED
 
-The installed `signalsmith-stretch@1.3.2` package is an official Web Audio
-wrapper that creates its own separate `AudioWorkletNode`. It does not export the
-raw block-level WASM API required by AUTOTOAD's single `ToadProcessor`.
+The raw Signalsmith Stretch Emscripten factory (WASM inlined as base64) is now
+vendored at `src/audio/wasm/signalsmithCore.js` (regenerate with
+`node scripts/vendor-signalsmith.mjs`) and instantiated directly inside
+`ToadProcessor` — one WASM module instance per voice, five total.
 
-Phase 2 therefore uses the plan's permitted hand-rolled granular fallback:
-
-- pitch correction and pitch shifting are implemented;
-- independent formant shifting is currently a no-op;
-- formant preservation is not guaranteed;
-- the adapter logs one warning if a non-zero Formant value is requested;
-- the ±12 semitone “no chipmunk” acceptance item is not guaranteed.
-
-A future fix requires vendoring/adapting the raw Signalsmith WASM core behind
-the existing `Shifter` interface.
+- `SignalsmithShifter` in `src/audio/dsp/shifterPool.ts` implements the
+  existing `Shifter` interface: streaming `_process(128, 128)` per block,
+  transpose with an 8 kHz tonality limit, independent formant shift with
+  pitch compensation (formant preservation), and formant-base hints from the
+  tracked fundamental.
+- Live configuration: STFT block ≈ 21.3 ms (1024 samples at 48 kHz), hop =
+  block/4, split computation on. Measured shifter latency: 1280 samples
+  (≈ 26.7 ms) — up from the granular fallback's 640; tune
+  `STRETCH_BLOCK_SECONDS` in `shifterPool.ts` if total latency matters more
+  than low-voice quality.
+- Measured cost: 5 simultaneous voices ≈ 126 µs per 128-sample block in Node
+  (budget 1500 µs).
+- The granular shifter remains as an automatic runtime fallback if WASM init
+  fails; `engine.shifterKind` ('signalsmith' | 'granular') reports which
+  engine loaded, also logged to the console at startup.
+- Verified in-browser (demo input): worklet loads the signalsmith engine,
+  correction telemetry stays correct, master output carries audio,
+  `tests/shifter.test.ts` exercises the real WASM under Node (unity gain,
+  +12 st ≈ frequency doubling, reset survival, five independent voices).
+- Still needs a human ear: perceived formant quality on real voice
+  (±12 semitone “no chipmunk” check) and the Formant slider's audible effect.
 
 ### Runtime checks requiring a human listener
 
@@ -397,7 +409,9 @@ The agent cannot hear the output. These remain manual:
 - webcam gesture feel, lighting robustness, handedness, and HUD/thumbnail
   behavior with the actual MediaPipe model installed;
 - audio glitches under five-voice load;
-- perceived formant quality.
+- perceived formant quality of the Signalsmith engine on real voice
+  (±12 st shift should no longer chipmunk; Formant slider should audibly
+  change character without changing pitch).
 
 ### Performance measurements still needed
 

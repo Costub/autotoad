@@ -113,7 +113,7 @@ Conflict rule (encode in the state machine): per hand, exactly one gesture owns 
 4. **`prefers-reduced-motion`**: verify ambient drift off, transitions to 50 ms, pitch trace kept.
 5. **Deploy**: `npm run build` → deploy to Vercel (`vercel deploy` or git integration; if the implementing agent can't deploy, produce the build and verify `npm run preview` serves with COOP/COEP and `crossOriginIsolated === true`, and document the deploy steps in the README).
 6. **Cold-start budget**: gate-click → first sound < 4 s on broadband: check bundle sizes (`vite build --report` or rollup-plugin-visualizer optional), lazy-load MediaPipe (it must NOT block audio start).
-7. **Optional (only if time permits, after everything above passes) — real formant preservation**: Phase 2 shipped on the granular fallback because `signalsmith-stretch@1.3.2` only exposes its own AudioWorkletNode, not a raw block API. The fix is to vendor the Signalsmith WASM core (compile or extract the raw module), load its bytes via `processorOptions` (the Phase 2.1 pattern), and implement a real `Shifter` adapter behind the existing interface in [shifterPool.ts](../src/audio/dsp/shifterPool.ts) — nothing outside that file changes. Treat as its own session; skip freely.
+7. ~~**Optional — real formant preservation**~~ **DONE**: the raw Signalsmith Emscripten factory (inlined WASM) is vendored at `src/audio/wasm/signalsmithCore.js` (regenerate via `scripts/vendor-signalsmith.mjs`) and adapted behind the `Shifter` interface in [shifterPool.ts](../src/audio/dsp/shifterPool.ts); the granular shifter remains as a runtime fallback. See progress.md for measurements.
 
 ## 6.6 Tests — `tests/gestureMapper.test.ts`
 

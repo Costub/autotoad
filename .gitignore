@@ -1,0 +1,11 @@
+# Dependencies and build output
+node_modules/
+dist/
+
+# Local tooling
+*.local
+*.log
+.DS_Store
+
+# TypeScript incremental metadata
+*.tsbuildinfo

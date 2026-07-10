@@ -35,6 +35,31 @@ measured at 1920×1080 / 1440×860 (fits) and 1366×768 (graceful scroll),
 2-col/1-col reflow without horizontal scroll, perf mode, loop recording,
 and the v1→v2 settings migration.
 
+**2026-07-10 (second pass) — stage-first layout + compact dock.** Follow-up
+polish after user feedback (stage too small, cards with dead space, button
+groups appearing to overlap):
+
+- Group cards flattened: the full-width card headers became slim 88px label
+  gutters with a hairline divider (`.groupTag`), cutting each card by ~30px.
+- Dock rows regrouped by content height (Tune full-width / Input+Harmony
+  paired 2:3 / Instrument / FX / Loop) so same-row cards match heights — no
+  more stretched boxes with empty space. Dock: ~523px → ~364px.
+- Stage budget re-tuned (`--stage-h: clamp(300px, 100vh - 500px, 620px)`):
+  stage now 644×580 at 1080p (was 511×460) and 400×360 at 1440×860; the live
+  view is unmistakably the main view.
+- `.segment{flex-wrap:nowrap}`: a joined button group can no longer break
+  mid-group (the visual "overlapping buttons" bug); strips wrap between whole
+  segments instead.
+- Looper card compacted: single tag gutter (Loop · status · n/8), transport
+  strip, lanes only when layers exist (inline hint otherwise).
+- StartGate no longer awaits `requestAnimationFrame` before starting the
+  engine (rAF never fires in hidden/throttled tabs and hung the whole start
+  sequence — replaced with a macrotask yield).
+
+Verified at 1920×1080, 1440×860, 1366×768 (all fit fully now), 640px single
+column: zero overlaps across every button/select/slider/label, no horizontal
+scroll, perf mode intact, loop layer lanes render with ~305px sliders.
+
 | Phase | Status | Commit |
 |---|---|---|
 | 0 — Scaffold | Complete | `22e972f` |

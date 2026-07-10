@@ -83,10 +83,10 @@
 }
 
 .stage {
-  /* Height budget: 100vh minus header + paddings + a typical dock height.
-     Tune the 620px constant if the fit target drifts. Width follows from the
+  /* Height budget: 100vh minus header + paddings + the compact dock height.
+     Tune the 500px constant if the fit target drifts. Width follows from the
      160:144 stage ratio; narrow windows clamp on width and letterbox. */
-  --stage-h: clamp(250px, calc(100vh - 620px), 520px);
+  --stage-h: clamp(300px, calc(100vh - 500px), 620px);
   width: min(100%, calc(var(--stage-h) * 160 / 144));
   aspect-ratio: 160 / 144;
   margin-inline: auto;
@@ -104,27 +104,21 @@
 
 /* Dock: responsive grid of group cards. ControlsPanel contributes its five
    cards via display:contents; LooperPanel is the sixth (area: loop). */
+/* Rows pair cards of similar content height so nothing stretches with
+   empty space: Tune (sliders) full-width, Input+Harmony (short strips)
+   share a row, Instrument/FX/Loop full-width. */
 .dock {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 2fr 3fr;
   grid-template-areas:
-    'input harmony instrument'
-    'tune  tune    fx'
-    'loop  loop    loop';
+    'tune tune'
+    'input harmony'
+    'instrument instrument'
+    'fx fx'
+    'loop loop';
   opacity: 1;
   transition: opacity 150ms var(--ease);
-}
-
-@media (max-width: 1199px) {
-  .dock {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas:
-      'input harmony'
-      'tune tune'
-      'instrument fx'
-      'loop loop';
-  }
 }
 
 @media (max-width: 759px) {

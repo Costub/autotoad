@@ -234,7 +234,7 @@ export function ControlsPanel() {
   return (
     <div className={styles.panel}>
       <section className={`${styles.group} ${styles.groupInput}`}>
-        <header className={styles.groupHeader}><span>Input</span></header>
+        <div className={styles.groupTag}><span>Input</span></div>
         <div className={styles.strip}>
           <Segment
             label="Input source"
@@ -267,10 +267,10 @@ export function ControlsPanel() {
       </section>
 
       <section className={`${styles.group} ${styles.groupTune}`}>
-        <header className={styles.groupHeader}>
+        <div className={styles.groupTag}>
           <span>Tune</span>
           <span className={styles.latency}>~{Math.round(latencyMs)} ms</span>
-        </header>
+        </div>
 
         <div className={styles.controls}>
           <label className={styles.selectControl}>
@@ -368,7 +368,7 @@ export function ControlsPanel() {
           />
 
           <button
-            className={`${styles.bypass} ${bypass ? styles.bypassActive : ''}`}
+            className={`${styles.bypass} ${styles.cellEnd} ${bypass ? styles.bypassActive : ''}`}
             type="button"
             aria-pressed={bypass}
             onClick={() => set({ bypass: !bypass })}
@@ -379,9 +379,9 @@ export function ControlsPanel() {
       </section>
 
       <section className={`${styles.group} ${styles.groupHarmony}`}>
-        <header className={styles.groupHeader}>
+        <div className={styles.groupTag}>
           <span>Harmony</span>
-        </header>
+        </div>
         <div className={styles.harmonyControls}>
           <div className={styles.presetButtons} aria-label="Harmony preset">
             {HARMONY_OPTIONS.map((option) => {
@@ -418,7 +418,7 @@ export function ControlsPanel() {
       </section>
 
       <section className={`${styles.group} ${styles.groupInstrument}`}>
-        <header className={styles.groupHeader}><span>Instrument</span></header>
+        <div className={styles.groupTag}><span>Instrument</span></div>
         <div className={styles.strip}>
           <Segment label="Engine mode" options={MODE_OPTIONS} value={engineMode} onChange={(value) => set({ engineMode: value })} />
           <Segment label="Instrument preset" options={INSTRUMENT_OPTIONS} value={instrument} onChange={(value) => set({ instrument: value })} />
@@ -435,16 +435,16 @@ export function ControlsPanel() {
       </section>
 
       <section className={`${styles.group} ${styles.groupFx}`}>
-        <header className={styles.groupHeader}><span>FX</span></header>
+        <div className={styles.groupTag}><span>FX</span></div>
         <div className={styles.controls}>
           <RangeControl label="Reverb" min={0} max={1} step={0.01} value={reverbSend} formatValue={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set({ reverbSend: v })} />
           <RangeControl label="Decay" min={0.5} max={8} step={0.1} value={reverbDecay} formatValue={(v) => `${v.toFixed(1)} s`} onChange={(v) => set({ reverbDecay: v })} />
           <RangeControl label="Delay" min={0} max={1} step={0.01} value={delaySend} formatValue={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set({ delaySend: v })} />
           <RangeControl label="Feedback" min={0} max={0.75} step={0.01} value={delayFeedback} formatValue={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set({ delayFeedback: v })} />
-          <div className={styles.fxFooter}>
+          <div className={styles.cellEnd}>
             <Segment label="Delay division" options={DELAY_OPTIONS.map((value) => ({ value, label: value }))} value={delayTime} onChange={(value) => set({ delayTime: value })} />
-            <button className={styles.toggle} type="button" onClick={() => engine.panic()}>Panic</button>
           </div>
+          <button className={`${styles.toggle} ${styles.cellEnd}`} type="button" onClick={() => engine.panic()}>Panic</button>
         </div>
       </section>
     </div>

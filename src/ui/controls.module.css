@@ -7,10 +7,11 @@
 
 .group {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 8px 10px 10px;
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
   border: 1px solid var(--hairline);
   border-radius: 8px;
   background: var(--panel);
@@ -22,13 +23,15 @@
 .groupInstrument { grid-area: instrument; }
 .groupFx { grid-area: fx; }
 
-.groupHeader {
+/* Slim label gutter: group name (small caps) + optional meta, hairline on the right. */
+.groupTag {
+  align-self: stretch;
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--hairline);
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding-right: 10px;
+  border-right: 1px solid var(--hairline);
   color: var(--text);
   font-size: 13px;
   font-weight: 500;
@@ -48,9 +51,16 @@
 .controls {
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   align-items: end;
   gap: 8px 14px;
+}
+
+/* Non-slider cells (buttons, segments) sit on the slider baseline. */
+.cellEnd {
+  align-self: end;
+  margin-bottom: 4px;
+  justify-self: start;
 }
 
 .controlHead {
@@ -157,9 +167,7 @@
 }
 
 .bypass {
-  align-self: end;
   min-height: 30px;
-  margin-bottom: 11px;
   padding: 0 9px;
   border: 1px solid var(--hairline);
   border-radius: 3px;
@@ -195,19 +203,14 @@
   gap: 10px 12px;
 }
 
-.fxFooter {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px 12px;
-}
-
+/* A segment is one joined control — it must never break across lines
+   (a wrapped segment loses its joined borders and reads as overlap).
+   Wrapping happens between whole segments in the surrounding strip. */
 .segment {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   min-width: 0;
+  width: max-content;
 }
 
 .segment button,

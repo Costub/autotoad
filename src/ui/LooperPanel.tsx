@@ -37,11 +37,12 @@ export function LooperPanel() {
 
   return (
     <section className={styles.panel} aria-label="Looper">
-      <div className={styles.transport}>
-        <div className={styles.heading}>
-          <span>Loop</span>
-          <span className={styles.status}>{statusLabel(looperState, layers.length)}</span>
-        </div>
+      <div className={styles.heading}>
+        <span>Loop</span>
+        <span className={styles.status}>{statusLabel(looperState, layers.length)}</span>
+        <span className={styles.status}>{layers.length}/{MAX_LAYERS}</span>
+      </div>
+      <div className={styles.body}>
         <div className={styles.strip}>
           <div className={styles.stepper} aria-label="Loop tempo">
             <span className={styles.label}>Tempo</span>
@@ -111,18 +112,12 @@ export function LooperPanel() {
           >
             Clear all
           </button>
-        </div>
-      </div>
-
-      <div className={styles.layers}>
-        <div className={styles.heading}>
-          <span>Layers</span>
-          <span className={styles.status}>{layers.length}/{MAX_LAYERS}</span>
+          {layers.length === 0 ? (
+            <span className={styles.empty}>no layers yet — record to stack</span>
+          ) : null}
         </div>
         <div className={styles.laneList}>
-          {layers.length === 0 ? (
-            <div className={styles.empty}>No layers yet — arm Record and feed the toad a phrase.</div>
-          ) : layers.map((layer) => (
+          {layers.map((layer) => (
             <div
               key={layer.id}
               className={`${styles.lane} ${layer.muted ? styles.laneMuted : ''}`}

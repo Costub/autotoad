@@ -28,9 +28,10 @@ export function StartGate() {
     setLoading(true);
     setStep('context');
     setProgress(0.2);
-    await new Promise<void>((resolve) => {
-      requestAnimationFrame(() => resolve());
-    });
+    // Yield one macrotask so the button's loading state paints. Deliberately
+    // NOT requestAnimationFrame: rAF never fires in hidden/throttled tabs,
+    // which would hang the whole start sequence.
+    await wait(0);
     setStep('engine');
     setProgress(0.55);
 
